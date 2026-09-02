@@ -25,6 +25,33 @@
 - **Phase 4 前置已交付**：Hermes `weekly-insights` skill（周洞察；实际运行需待会谈数据积累）
 - **待接入**：真实咨询记录、语音编排轨道（Phase 3：VAD/ASR/TTS/barge-in/WebRTC）
 
+## 仓库架构
+
+按设计文档 §3.1 的四层组织，**本仓库不含任何真实咨询内容**（那只存于本地 vault）。
+
+```
+VoiceTherapy/
+├── README.md                # 总览 + 权威设计文档(飞书 v0.2) + 当前状态
+├── .gitignore               # 忽略 .venv/ 与真实咨询数据
+├── hermes-skills/           # 【C层 Hermes】咨询系统 skill（大脑"会什么"）
+│   ├── counselor/           #   S0–S7 对话引擎、driving/desk、危机边界
+│   ├── session-notes/       #   会谈写回（新建AI会谈、更新热层）
+│   ├── recall/              #   历史检索（只读，带日期引用）
+│   └── weekly-insights/     #   周洞察（→ 洞察/YYYY-Wxx.md）
+├── templates/vault-structure/  # 【D层 vault】Obsidian 目录空模板（镜像 咨询/）
+│   ├── _系统/               #   咨询师人设 / 边界与危机 / 会谈流程
+│   ├── 来访者/我/           #   档案 / 工作同盟 / 人物关系 / 模式 / 有效干预 / 未完成 + 会谈模板
+│   ├── 主题/                #   议题→会谈反向索引
+│   └── 洞察/                #   周洞察落盘处
+└── voice_orchestrator/      # 【B层 语音编排】本仓库真正可执行的代码
+    ├── hermes_brain.py      #   大脑客户端 → 本地 Hermes 8642（OpenAI兼容, stream, 会话连续性）
+    ├── faster_whisper_stt.py #  自定义本地中文 STT（Pipecat service）
+    ├── edge_tts_service.py  #  自定义中文 TTS（edge→ffmpeg→PCM）
+    └── orchestrator.py      #  Pipecat pipeline 组装（Phase 3.1，进行中）
+```
+
+**分界**：`hermes-skills/` = 大脑行为（skill）；`templates/vault-structure/` = 长期记忆的骨架；`voice_orchestrator/` = 本项目的软件本体。`.venv/` 为本地运行依赖，不入库。
+
 ## 核心原则
 
 - Hermes 是唯一的咨询对话与工具编排核心，STT/TTS 只做语音输入输出。
