@@ -8,6 +8,7 @@
 |------|-------|------|
 | `counselor/` | counselor | 心理咨询辅助对话引擎：S0–S7 状态机、driving/desk 模式、热层记忆读取、危机处理边界。不写会谈文件（交棒 session-notes）。 |
 | `session-notes/` | session-notes | 会谈写回：新建 AI 会谈笔记、更新未完成、条件更新六槽/人物/有效干预，永不修改 type:human 文件。 |
+| `recall/` | recall | 历史会谈检索（只读）：按主题/模式定位再搜会谈，最多引用 2-3 段带日期，输出「当时发生→做了什么→与今天连接→一个问题」结构，driving 给 4 句压缩版，绝不写文件。 |
 
 ## 安装
 
@@ -15,6 +16,7 @@
 # 从本仓库复制到 Hermes skills 目录
 cp -R hermes-skills/counselor ~/.hermes/skills/
 cp -R hermes-skills/session-notes ~/.hermes/skills/
+cp -R hermes-skills/recall ~/.hermes/skills/
 ```
 
 ## 依赖的 Obsidian 目录结构
