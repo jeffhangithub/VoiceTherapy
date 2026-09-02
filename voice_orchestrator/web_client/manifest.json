@@ -1,0 +1,11 @@
+{
+  "name": "VoiceTherapy · 陪我聊聊",
+  "short_name": "VoiceTherapy",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#3E6B5E",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

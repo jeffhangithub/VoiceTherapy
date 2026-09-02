@@ -31,10 +31,11 @@ class FasterWhisperSTTService(SegmentedSTTService):
     def __init__(
         self,
         *,
-        model: str = "base",
+        model: str = "small",   # base 中文太弱, 升 small(准确度/速度平衡); medium 太慢
         language: str = "zh",
         device: str = "cpu",
         compute_type: str = "int8",
+        beam_size: int = 5,     # 提升转写准确度
         **kwargs,
     ):
         # 填满 framework settings, 避免 NOT_GIVEN 警告
@@ -46,6 +47,7 @@ class FasterWhisperSTTService(SegmentedSTTService):
         self._language = language
         self._device = device
         self._compute_type = compute_type
+        self._beam_size = beam_size
         self._model: WhisperModel | None = None  # 惰性加载, 首次转写时才下/载模型
         self._audio_frames = 0
 
@@ -73,7 +75,7 @@ class FasterWhisperSTTService(SegmentedSTTService):
         audio = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
         logger.info(f"[STT] 开始转写 {len(audio) / 16000:.1f}s 音频 …")
         segments, _info = self._model.transcribe(
-            audio, language=self._language, beam_size=1, vad_filter=True
+            audio, language=self._language, beam_size=self._beam_size, vad_filter=True
         )
         text = "".join(s.text for s in segments).strip()
         logger.info(f"[STT] 转写结果: {text!r}")

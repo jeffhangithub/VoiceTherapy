@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#3E6B5E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>VoiceTherapy · 陪我聊聊</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="manifest" href="./manifest.json" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="brand"><span class="brand-dot"></span><span>VoiceTherapy</span></div>
+      <span id="connBadge" class="badge offline">未连接</span>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div id="avatar" class="avatar">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="46" r="22" fill="#f0ead8" />
+            <path d="M60 78c-18 0-30 8-34 24h68c-4-16-16-24-34-24z" fill="#f0ead8" />
+            <circle cx="51" cy="45" r="2.4" fill="#3a4a44" /><circle cx="69" cy="45" r="2.4" fill="#3a4a44" />
+            <path d="M50 54c6 5 14 5 20 0" stroke="#3a4a44" stroke-width="2.6" fill="none" stroke-linecap="round" />
+          </svg>
+        </div>
+        <h1 id="heroTitle">想聊聊吗？</h1>
+        <p class="subtitle">我在，慢慢说。点下方开始，我们语音说说话。</p>
+        <div id="timerWrap" class="timer" hidden>⏱ <span id="timer">00:00</span></div>
+        <p id="status" class="status" role="status">点按开始对话</p>
+      </section>
+
+      <!-- 对话文字记录（#3 实时识别确认 / #4 历史） -->
+      <section id="chat" class="chat" aria-live="polite"></section>
+    </main>
+
+    <footer>
+      <div id="controls" class="controls">
+        <!-- 主按钮：#2 开始 / 暂停 -->
+        <button id="connectBtn" class="mic-btn" aria-label="开始对话">
+          <span class="mic-icon"></span>
+        </button>
+        <!-- 结束/退出 -->
+        <button id="exitBtn" class="exit-btn" hidden>结束对话</button>
+      </div>
+      <p class="hint" id="hintText">开始</p>
+    </footer>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
