@@ -33,6 +33,7 @@ from pathlib import Path
 from loguru import logger
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
@@ -111,10 +112,19 @@ def build_pipeline(transport: LocalAudioTransport, llm: OpenAILLMService) -> Pip
     tts = EdgeTTSService()
 
     # LLM 上下文 + 用户/助手聚合器；VAD 挂在用户聚合器上（Silero 判停触发 STT）
+    # 灵敏度放宽：min_volume 降低、stop_secs 拉长，便于首次调试触发
     context = LLMContext()
+    vad = SileroVADAnalyzer(
+        params=VADParams(
+            confidence=0.5,
+            start_secs=0.2,
+            stop_secs=0.5,
+            min_volume=0.3,
+        )
+    )
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
-        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
+        user_params=LLMUserAggregatorParams(vad_analyzer=vad),
     )
 
     pipeline = Pipeline(

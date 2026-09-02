@@ -1,12 +1,9 @@
 """
-edge-tts —— Pipecat TTSService 自定义实现(中文女声, 免费)。
+edge-tts —— Pipecat TTSService 自定义实现(中文女声, 免费, 含诊断日志)。
 
 背景: pipecat 1.8.1 没有内置 edge-tts 服务, 故自写。
-基于: TTSService 抽象方法 run_tts(text, context_id) 需 yield AudioRawFrame。
-edge-tts 输出 MP3 → 用 ffmpeg 解码成 16kHz 单声道 s16le PCM 喂给 Pipecat。
-(Mac 上 /opt/homebrew/bin/ffmpeg 已装。edge-tts 联网合成, 需代理时启动前 export 代理。)
-
-头验: edge 合成中文 → ffmpeg 解码 PCM 已通过。
+edge-tts 输出 MP3 → ffmpeg 解码成 16kHz 单声道 s16le PCM 喂给 Pipecat。
+诊断: 日志前缀 [TTS] — 定位语音环在哪一环断开。
 """
 from __future__ import annotations
 
@@ -15,8 +12,10 @@ import io
 import subprocess
 
 import edge_tts
+from loguru import logger
 
-from pipecat.frames.frames import AudioRawFrame
+from pipecat.frames.frames import TTSAudioRawFrame
+from pipecat.services.settings import TTSSettings
 from pipecat.services.tts_service import TTSService
 
 _FFMPEG = "/opt/homebrew/bin/ffmpeg"
@@ -32,7 +31,11 @@ class EdgeTTSService(TTSService):
         sample_rate: int = 16000,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        # 填满 framework settings, 避免 NOT_GIVEN 警告
+        super().__init__(
+            settings=TTSSettings(voice=voice, model=None, language=None),
+            **kwargs,
+        )
         self._voice = voice
         self._sr = sample_rate
 
@@ -61,13 +64,19 @@ class EdgeTTSService(TTSService):
         text = (text or "").strip()
         if not text:
             return
+        logger.info(f"[TTS] run_tts 收到文字: {text[:60]!r}")
         loop = asyncio.get_running_loop()
         pcm = await loop.run_in_executor(None, self._synth_to_pcm, text)
+        logger.info(f"[TTS] 合成 PCM {len(pcm)} 字节, 开始播放")
         # 切成 ~100ms 帧逐段 yield, 便于打断(barge-in)在帧边界停播
+        # 注意: 必须 yield TTSAudioRawFrame(带 context_id, 继承 OutputAudioRawFrame),
+        #       不能 yield 普通 AudioRawFrame —— 否则输出传输因缺 id/transport_destination 拒收
         frame_bytes = int(self._sr * 0.1) * 2  # 100ms, 16-bit mono
         for i in range(0, len(pcm), frame_bytes):
-            yield AudioRawFrame(
+            yield TTSAudioRawFrame(
                 audio=pcm[i : i + frame_bytes],
                 sample_rate=self._sr,
                 num_channels=1,
+                context_id=context_id,
             )
+        logger.info(f"[TTS] 播放完成")
