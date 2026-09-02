@@ -33,8 +33,10 @@ Phase 3 语音编排器。跑在 Mac Mini 上，作为常驻进程，把**麦克
 ```
 voice_orchestrator/
 ├── config.example.yaml   # 编排配置模板（复制为 config.yaml）
-├── orchestrator.py        # Pipecat pipeline：mic→VAD→ASR→Hermes→TTS→speaker
-├── hermes_brain.py        # 封装到 8642 的 OpenAI 兼容调用 + stream + cancel
+├── hermes_brain.py        # 封装到 8642 的 OpenAI 兼容调用 + stream（已实测）
+├── faster_whisper_stt.py  # 自定义本地 STT：SegmentedSTTService 子类（帧级已验证）
+├── edge_tts_service.py    # 自定义 TTS：TTSService 子类，edge MP3→ffmpeg→PCM（帧级已验证）
+├── orchestrator.py        # Pipecat pipeline：mic→VAD→STT→Hermes→TTS→speaker（待组装）
 └── README.md
 ```
 
