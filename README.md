@@ -17,11 +17,13 @@
 
 ## 当前状态
 
-项目处于设计与 Phase 0+1（本机可验证的文字 MVP）阶段。
+项目处于设计与文字轨道（Phase 0+1+2）完成、语音轨道未启动的阶段。
 
-- **Phase 0 已交付**：Obsidian `咨询/` 子系统目录结构 + 模板（见 `templates/vault-structure/`）
+- **Phase 0 已交付**：Obsidian `咨询/` 子系统目录结构 + 模板（见 `templates/vault-structure/`，含 `洞察/`）
 - **Phase 1 已交付**：Hermes `counselor` 与 `session-notes` skill（见 `hermes-skills/`）
-- 尚未接入真实咨询记录或云端语音密钥
+- **Phase 2 已交付**：Hermes `recall` skill（历史会谈检索，只读）
+- **Phase 4 前置已交付**：Hermes `weekly-insights` skill（周洞察；实际运行需待会谈数据积累）
+- **待接入**：真实咨询记录、语音编排轨道（Phase 3：VAD/ASR/TTS/barge-in/WebRTC）
 
 ## 核心原则
 
