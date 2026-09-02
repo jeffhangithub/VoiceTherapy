@@ -47,7 +47,7 @@ VoiceTherapy/
     ├── hermes_brain.py      #   大脑客户端 → 本地 Hermes 8642（OpenAI兼容, stream, 会话连续性）
     ├── faster_whisper_stt.py #  自定义本地中文 STT（Pipecat service）
     ├── edge_tts_service.py  #  自定义中文 TTS（edge→ffmpeg→PCM）
-    └── orchestrator.py      #  Pipecat pipeline 组装（已 headless 验证可构造；待真机活测）
+    └── orchestrator.py      #  Pipecat pipeline（已在本机活测：STT→Hermes→edge女声→扬声器 + 打断 均通）
 ```
 
 **分界**：`hermes-skills/` = 大脑行为（skill）；`templates/vault-structure/` = 长期记忆的骨架；`voice_orchestrator/` = 本项目的软件本体。`.venv/` 为本地运行依赖，不入库。
