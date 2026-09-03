@@ -15,6 +15,38 @@
 
 本仓库不再维护独立的本地架构文档副本；所有产品决策、架构、验收标准、阶段划分均以飞书文档 v0.2 为唯一权威。
 
+## 实现的技术架构（运行态）
+
+大脑 = 本地 Hermes Agent API Server（`127.0.0.1:8642`，OpenAI 兼容，加载 counselor 等 skill + vault）。STT/TTS 只在端上做语音进出，大脑负责对话与检索。
+
+**手机语音路径（3.3，主场景）：**
+```
+手机 PWA(web_client/)
+  ⇅ WebRTC(音频 + 实时转写事件)
+https://mac.tail844e3d.ts.net/ ── Tailscale Serve
+  └→ web_server.js(:8050)   静态页 + /api/offer 反代 + /api/save 存库
+       └→ orchestrator_webrtc.py(:7860)  SmallWebRTCTransport runner
+            └→ Pipecat 管线：
+                手机麦克风 → VAD(判停) → SenseVoiceSTT(本地中文, 整段转写)
+                → Hermes 大脑(8642) —— 系统指令 = counselor_context.build()
+                   (每场会话开始预注入: 人设 + 热层[过滤测试态] + 最近林老师会谈回顾)
+                → EdgeTTSService(edge→ffmpeg→PCM, 流式首帧)
+                → 手机扬声器(barge-in 可打断)
+  会话结束 → /api/save → vault 咨询/来访者/我/会谈/YYYY-MM-DD-AI-访谈.md
+```
+**本机语音路径（3.1/3.2，平行）：** `orchestrator.py`（麦克风/扬声器本地音频）与手机路径共用同一套 STT/LLM/TTS/VAD 与 `counselor_context`。
+
+**常驻（launchd，开机自启）：** `com.voicetherapy.webrtc.runner`(7860) / `com.voicetherapy.web.server`(8050)；Tailscale Serve 把根路径指到自定义页。
+
+**关键设计取舍：**
+- **预注入而非现场翻库**：语音是单次 chat completion，大脑若现场 agentic 读 vault 会卡死(80s+) → 开场由 `counselor_context` 拼好注入。
+- **数据卫生**：`status:测试` 的占位不被当真实背景；原始音频仅内存处理，不落盘不入日志；真实咨询内容只存本地 vault。
+- **延迟**：本地 ASR(SenseVoice) + 同 WiFi；P1/P2(TTS 流式首帧/轻 persona) 已在分支。
+
+## 当前版本更新说明
+
+见 **[CHANGELOG.md](CHANGELOG.md)** —— 过去 24 小时优化小结（手机语音打通、SenseVoice 换装、咨询大脑预注入 + 开场回顾 + 护栏、延迟优化、UI 打磨等）。
+
 ## 当前状态
 
 文字轨道（Phase 0/1/2/4）与**语音轨道（Phase 3）均已打通并真机验证**。
