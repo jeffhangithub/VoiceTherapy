@@ -23,7 +23,6 @@ from loguru import logger
 sys.path.insert(0, str(Path(__file__).parent))
 from orchestrator import (  # noqa: E402
     SAMPLE_RATE,
-    SYSTEM_INSTRUCTION,
     build_llm,
     load_hermes_api_key,
 )
@@ -90,7 +89,9 @@ async def run_bot(transport: BaseTransport, _runner_args: RunnerArguments):
     @transport.event_handler("on_client_connected")
     async def on_client_connected(_transport, _client):
         logger.info("📱 手机客户端已连接 —— WebRTC 语音环就绪，请说话")
-        context.add_message({"role": "developer", "content": SYSTEM_INSTRUCTION})
+        # P1: 人设/系统指令已由 build_llm() 的 settings.system_instruction 注入
+        # (OpenAILLMService 适配器会在每次请求前把它作为 system 消息前置)。
+        # 这里不再重复 add developer message，避免与 settings 重复、也省一点 prompt token。
         # 可选：连接后打个招呼，让 Jeff 听到出声即确认链路通
         # (先不自动说话，避免与用户抢话；由用户先开口触发)
 

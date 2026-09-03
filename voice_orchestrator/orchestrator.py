@@ -53,7 +53,10 @@ SAMPLE_RATE = 16000  # 全链路 16kHz，Silero VAD 只支持 8000/16000
 HERMES_BASE_URL = "http://127.0.0.1:8642/v1"
 HERMES_MODEL = "hermes-agent"
 HERMES_ENV_PATH = Path.home() / ".hermes" / ".env"
-SYSTEM_INSTRUCTION = "你用中文回答，语气自然、简洁。"  # 简单对话人设，counselor 复杂提示下一轮再加
+SYSTEM_INSTRUCTION = (
+    "你是 Jeff 的心理咨询助手，用中文短句、自然语气回应。"
+    "每次回复第一句先给一句极短的接话（如「我在听」「嗯，你说」），再补充具体内容。"
+)
 
 
 def load_hermes_api_key() -> str:
