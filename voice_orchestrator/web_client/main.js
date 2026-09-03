@@ -32,6 +32,7 @@ const states = { OFF:0, CONNECTING:1, ON:2 }; // 是否已建连(不含暂停)
 let connState = states.OFF;
 
 function setState() {
+  document.body.classList.toggle("incall", connState !== states.OFF);  // 通话中压缩问候区
   connectBtn.classList.remove("connecting","talking","listening","paused");
   avatar.classList.remove("listening","talking");
   if (connState === states.OFF) {
@@ -70,7 +71,10 @@ function onUserTranscript(data) {
   if (!data) return;
   if (!userBubble || userBubble.dataset.final === "1") { userBubble = addBubble("user"); userBubble.dataset.final = "0"; }
   userBubble.textContent = data.text || "…";
-  if (data.final) { userBubble.dataset.final = "1"; statusEl.textContent = "听到，我想想…"; }
+  if (data.final) {
+    userBubble.dataset.final = "1"; statusEl.textContent = "听到，我想想…";
+    botBubble = null;   // 用户回合结束 → 下一条 bot 回复独立成新气泡(像微信，不拼进旧的)
+  }
   chat.scrollTop = chat.scrollHeight;
 }
 
@@ -108,15 +112,15 @@ async function connect() {
     client.on(RTVIEvent.TrackStopped, (track) => {
       if (track?.kind === "audio" && !track?.local) startTurnGap();
     });
-    client.on(RTVIEvent.UserStartedSpeaking, () => { userBubble = null; });
+    client.on(RTVIEvent.UserStartedSpeaking, () => { userBubble = null; botBubble = null; });
     client.on(RTVIEvent.UserTranscript, (d) => onUserTranscript(d));
     client.on(RTVIEvent.BotTtsText, (d) => onBotTtsText(d));
     client.on(RTVIEvent.BotConnected, () => { connState = states.ON; listening = true; startTimer(); setState(); });
     client.on(RTVIEvent.Disconnected, () => endSession());
 
     await client.connect({ webrtcUrl: BOT_URL });
-    addBubble("bot").textContent = "你好，我在。想聊聊什么？";
     connState = states.ON; listening = true; startTimer();
+    // 问候/开场回顾由大脑 S0 作为首条 bot 回复给出，客户端不加静态问候
     connectBtn.disabled = false;      // #1 修复：连接成功要重新可用，否则点不了
     setState();
   } catch (err) {

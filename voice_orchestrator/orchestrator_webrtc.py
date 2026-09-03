@@ -23,12 +23,11 @@ from loguru import logger
 sys.path.insert(0, str(Path(__file__).parent))
 from orchestrator import (  # noqa: E402
     SAMPLE_RATE,
-    SYSTEM_INSTRUCTION,
     build_llm,
     load_hermes_api_key,
 )
 from edge_tts_service import EdgeTTSService  # noqa: E402
-from faster_whisper_stt import FasterWhisperSTTService  # noqa: E402
+from sensevoice_stt import SenseVoiceSTTService  # noqa: E402
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer  # noqa: E402
 from pipecat.audio.vad.vad_analyzer import VADParams  # noqa: E402
@@ -48,7 +47,7 @@ from pipecat.workers.runner import WorkerRunner  # noqa: E402
 
 async def run_bot(transport: BaseTransport, _runner_args: RunnerArguments):
     """拼 WebRTC 版管线（与 orchestrator.py 同构，VAD 灵敏度放宽便于手机试）。"""
-    stt = FasterWhisperSTTService()
+    stt = SenseVoiceSTTService()
     tts = EdgeTTSService()
     llm = build_llm()  # Hermes 8642, key 从 .env 读，不硬编码
 
@@ -90,7 +89,7 @@ async def run_bot(transport: BaseTransport, _runner_args: RunnerArguments):
     @transport.event_handler("on_client_connected")
     async def on_client_connected(_transport, _client):
         logger.info("📱 手机客户端已连接 —— WebRTC 语音环就绪，请说话")
-        context.add_message({"role": "developer", "content": SYSTEM_INSTRUCTION})
+        # 人设/开场回顾由 build_llm() 按会话注入 system_instruction，此处不再重复注入
         # 可选：连接后打个招呼，让 Jeff 听到出声即确认链路通
         # (先不自动说话，避免与用户抢话；由用户先开口触发)
 

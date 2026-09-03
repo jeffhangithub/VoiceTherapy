@@ -1,7 +1,7 @@
 """VoiceTherapy Phase 3.1 —— Pipecat 1.8.1 本机实时语音环 orchestrator。
 
 管线（cascade，文字 MVP 之后接语音）:
-    麦克风 → LocalAudioTransport → Silero VAD → FasterWhisperSTT(本地中文)
+    麦克风 → LocalAudioTransport → Silero VAD → SenseVoiceSTT(本地中文)
       → LLM(本地 Hermes API Server 8642, OpenAI 兼容) → EdgeTTS(中文) → 扬声器
 
 架构（Pipecat 1.8.1 当前 Worker/PipelineTask/PipelineWorker 范式，对照官方模板
@@ -46,14 +46,16 @@ from pipecat.transports.local.audio import LocalAudioTransport, LocalAudioTransp
 from pipecat.workers.runner import WorkerRunner
 
 from edge_tts_service import EdgeTTSService
-from faster_whisper_stt import FasterWhisperSTTService
+from sensevoice_stt import SenseVoiceSTTService
 
 # ---- 常量 ----
 SAMPLE_RATE = 16000  # 全链路 16kHz，Silero VAD 只支持 8000/16000
 HERMES_BASE_URL = "http://127.0.0.1:8642/v1"
 HERMES_MODEL = "hermes-agent"
 HERMES_ENV_PATH = Path.home() / ".hermes" / ".env"
-SYSTEM_INSTRUCTION = "你用中文回答，语气自然、简洁。"  # 简单对话人设，counselor 复杂提示下一轮再加
+# 咨询开场上下文：由 counselor_context 预注入(人设+热层+林老师开场回顾)，
+# 避免大脑现场 agentic 翻库造成的卡顿/高延时。在 build_llm() 时(每场会话开始)组装。
+from counselor_context import build as build_counselor_context  # noqa: E402
 
 
 def load_hermes_api_key() -> str:
@@ -88,7 +90,7 @@ def build_llm() -> OpenAILLMService:
         base_url=HERMES_BASE_URL,
         settings=OpenAILLMService.Settings(
             model=HERMES_MODEL,
-            system_instruction=SYSTEM_INSTRUCTION,
+            system_instruction=build_counselor_context(),  # 每场会话开始组装(预注入)
         ),
     )
 
@@ -96,7 +98,7 @@ def build_llm() -> OpenAILLMService:
 def build_services():
     """构造三个 service（STT / LLM / TTS），供 headless 验证或后续复用。"""
     return {
-        "stt": FasterWhisperSTTService(),  # 本地 faster-whisper 中文，VAD 停后整段转写
+        "stt": SenseVoiceSTTService(),  # 中文专用，本地，快而准
         "llm": build_llm(),
         "tts": EdgeTTSService(),           # edge-tts 中文，MP3 → ffmpeg → 16k PCM
     }
@@ -108,7 +110,7 @@ def build_pipeline(transport: LocalAudioTransport, llm: OpenAILLMService) -> Pip
     顺序（对照 pipeline_components.jinja2 的 cascade_pipeline 宏）:
         input → stt → user_aggregator → llm → tts → output → assistant_aggregator
     """
-    stt = FasterWhisperSTTService()
+    stt = SenseVoiceSTTService()
     tts = EdgeTTSService()
 
     # LLM 上下文 + 用户/助手聚合器；VAD 挂在用户聚合器上（Silero 判停触发 STT）

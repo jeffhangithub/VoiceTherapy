@@ -17,40 +17,44 @@
 
 ## 当前状态
 
-项目处于设计与文字轨道（Phase 0+1+2）完成、语音轨道未启动的阶段。
+文字轨道（Phase 0/1/2/4）与**语音轨道（Phase 3）均已打通并真机验证**。
 
-- **Phase 0 已交付**：Obsidian `咨询/` 子系统目录结构 + 模板（见 `templates/vault-structure/`，含 `洞察/`）
-- **Phase 1 已交付**：Hermes `counselor` 与 `session-notes` skill（见 `hermes-skills/`）
-- **Phase 2 已交付**：Hermes `recall` skill（历史会谈检索，只读）
-- **Phase 4 前置已交付**：Hermes `weekly-insights` skill（周洞察；实际运行需待会谈数据积累）
-- **待接入**：真实咨询记录、语音编排轨道（Phase 3：VAD/ASR/TTS/barge-in/WebRTC）
+- **Phase 0–4 已交付**：Obsidian `咨询/` 结构（`templates/`）、`counselor`/`session-notes`/`recall`/`weekly-insights` skill（见 `hermes-skills/`）
+- **Phase 3.1/3.2 已验收**：本机实时语音环 + barge-in（打断 ~5ms）
+- **Phase 3.3 手机语音已打通**：手机浏览器 WebRTC ↔ Mac Mini runner ↔ Hermes，对话 + 打断可用
+- **随时能聊**：Mac Mini launchd 自启 runner + tailscale serve（URL 固定，免重扫）
+- **识别**：本地 **SenseVoice**（sherpa-onnx，中文专用，带标点；比 whisper 更快更准）
+- **咨询大脑**：开场预注入 `counselor_context`（人设 + 热层 + 最近林老师会谈回顾；过滤测试态占位；护栏：不因沉默退出、不擅自删改档案）
+- **定制 PWA 客户端**：咨询师主题界面、计时器、实时转写+历史、暂停/退出、结束自动存 `AI-访谈` 到 vault
+
+规划文档：`VoiceTherapy_2.0_开发计划.md`（原生 App + 免托管 AEC 路线）、`VoiceTherapy_响应延迟优化.md`（P1/P2 已完成于分支 `feat/latency-p1-p2`）。
 
 ## 仓库架构
 
-按设计文档 §3.1 的四层组织，**本仓库不含任何真实咨询内容**（那只存于本地 vault）。
+按设计文档 §3.1 分层组织，**本仓库不含任何真实咨询内容**（那只存于本地 vault）。
 
 ```
 VoiceTherapy/
-├── README.md                # 总览 + 权威设计文档(飞书 v0.2) + 当前状态
-├── .gitignore               # 忽略 .venv/ 与真实咨询数据
-├── hermes-skills/           # 【C层 Hermes】咨询系统 skill（大脑"会什么"）
-│   ├── counselor/           #   S0–S7 对话引擎、driving/desk、危机边界
-│   ├── session-notes/       #   会谈写回（新建AI会谈、更新热层）
-│   ├── recall/              #   历史检索（只读，带日期引用）
-│   └── weekly-insights/     #   周洞察（→ 洞察/YYYY-Wxx.md）
-├── templates/vault-structure/  # 【D层 vault】Obsidian 目录空模板（镜像 咨询/）
-│   ├── _系统/               #   咨询师人设 / 边界与危机 / 会谈流程
-│   ├── 来访者/我/           #   档案 / 工作同盟 / 人物关系 / 模式 / 有效干预 / 未完成 + 会谈模板
-│   ├── 主题/                #   议题→会谈反向索引
-│   └── 洞察/                #   周洞察落盘处
-└── voice_orchestrator/      # 【B层 语音编排】本仓库真正可执行的代码
-    ├── hermes_brain.py      #   大脑客户端 → 本地 Hermes 8642（OpenAI兼容, stream, 会话连续性）
-    ├── faster_whisper_stt.py #  自定义本地中文 STT（Pipecat service）
-    ├── edge_tts_service.py  #  自定义中文 TTS（edge→ffmpeg→PCM）
-    └── orchestrator.py      #  Pipecat pipeline（已在本机活测：STT→Hermes→edge女声→扬声器 + 打断 均通）
+├── README.md
+├── VoiceTherapy_2.0_开发计划.md     # 2.0 原生 App 路线
+├── VoiceTherapy_响应延迟优化.md     # 响应延迟分析与 P1-P4 路径
+├── hermes-skills/                   # 【C层 Hermes】咨询 skill（counselor/session-notes/recall/weekly-insights）
+├── templates/vault-structure/       # 【D层 vault】Obsidian 目录空模板
+└── voice_orchestrator/              # 【B层 语音编排】本仓库软件本体
+    ├── orchestrator.py              #   本机实时语音环(pipeline 入口)
+    ├── orchestrator_webrtc.py       #   手机 WebRTC runner(bot) 入口
+    ├── sensevoice_stt.py            #   本地中文 STT(sherpa-onnx SenseVoice，当前默认)
+    ├── faster_whisper_stt.py        #   备选 STT(faster-whisper，中文弱，默认已换 SenseVoice)
+    ├── edge_tts_service.py          #   中文 TTS(edge→ffmpeg→PCM；流式首帧)
+    ├── counselor_context.py         #   咨询开场上下文组装器(预注入人设+热层+林老师回顾)
+    ├── web_server.js                #   自定义页静态 + /api/offer 反代到 runner + /api/save 存库
+    ├── web_client/                  #   定制咨询师 PWA(index/styles/main/manifest/icon)
+    └── asr_models/                  #   (gitignore)SenseVoice onnx 模型，按需下载，不入库
 ```
 
-**分界**：`hermes-skills/` = 大脑行为（skill）；`templates/vault-structure/` = 长期记忆的骨架；`voice_orchestrator/` = 本项目的软件本体。`.venv/` 为本地运行依赖，不入库。
+**分界**：`hermes-skills/` = 大脑行为；`templates/` = 长期记忆骨架；`voice_orchestrator/` = 软件本体（`.venv/` 与 `asr_models/` 不入库）。
+
+**本地常驻（launchd）**：`com.voicetherapy.webrtc.runner`（7860 runner）+ tailscale serve（手机访问）；`com.voicetherapy.web.server`（8050 自定义页）。Hermes 大脑跑在 `127.0.0.1:8642`。
 
 ## 核心原则
 

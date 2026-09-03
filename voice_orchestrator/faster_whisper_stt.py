@@ -31,7 +31,7 @@ class FasterWhisperSTTService(SegmentedSTTService):
     def __init__(
         self,
         *,
-        model: str = "small",   # base 中文太弱, 升 small(准确度/速度平衡); medium 太慢
+        model: str = "medium",  # medium 中文更准(≈2.8×small耗时); small 更快(响应优先时用)
         language: str = "zh",
         device: str = "cpu",
         compute_type: str = "int8",
@@ -75,7 +75,8 @@ class FasterWhisperSTTService(SegmentedSTTService):
         audio = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
         logger.info(f"[STT] 开始转写 {len(audio) / 16000:.1f}s 音频 …")
         segments, _info = self._model.transcribe(
-            audio, language=self._language, beam_size=self._beam_size, vad_filter=True
+            audio, language=self._language, beam_size=self._beam_size, vad_filter=True,
+            initial_prompt="这是一段心理咨询师与来访者的中文语音对话转写。",
         )
         text = "".join(s.text for s in segments).strip()
         logger.info(f"[STT] 转写结果: {text!r}")
