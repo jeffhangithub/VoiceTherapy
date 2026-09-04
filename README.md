@@ -49,7 +49,7 @@ flowchart TB
             CC["counselor_context.build()<br/>预注入 人设+热层+林老师回顾"]
             VL["Obsidian vault<br/>咨询/ · 开场回顾状态"]
         end
-        subgraph L5["本机语音环 · 平行"]
+        subgraph L5["⑤ 本机语音环 · 平行(桌面/车内麦克风)"]
             LO["orchestrator.py<br/>麦克风/扬声器 本地音频"]
         end
     end
@@ -61,7 +61,8 @@ flowchart TB
     CC --> BR
     RT -- ⑦结束/api/save --> WS -- ⑧写会谈md --> VL
     BR -. 载入skill/vault .-> VL
-    L3 -. 共用组件 .-> LO
+    LO -. "本机实时语音(不经网络/Tailscale) · 共用 ③管线 + CC 预注入" .-> L3
+    LO -. "同样经由 counselor_context 预注入大脑" .-> CC
 ```
 
 **手机语音路径（3.3，主场景）：**
