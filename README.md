@@ -19,6 +19,51 @@
 
 大脑 = 本地 Hermes Agent API Server（`127.0.0.1:8642`，OpenAI 兼容，加载 counselor 等 skill + vault）。STT/TTS 只在端上做语音进出，大脑负责对话与检索。
 
+### 系统架构图
+
+```mermaid
+flowchart TB
+    C["📱 客户端 · iPhone / 任意浏览器<br/><b>定制咨询师 PWA</b><br/>web_client (HTML/JS/WebRTC) · 实时转写气泡"]
+
+    subgraph CH["通讯通道 · Tailscale (100.x)"]
+        TS["HTTPS/TLS<br/>mac.tail844e3d.ts.net · Serve"]
+        WC["WebRTC 音频<br/>UDP · 同WiFi直连 / 异地DERP中继"]
+    end
+
+    subgraph S["服务器端 · Mac Mini"]
+        direction TB
+        subgraph L1["① 接入层"]
+            WS["web_server.js :8050<br/>静态页 · /api/offer 反代 · /api/save"]
+        end
+        subgraph L2["② 媒体/信令层"]
+            RT["orchestrator_webrtc.py :7860<br/>SmallWebRTCTransport runner"]
+        end
+        subgraph L3["③ 语音管线层 · Pipecat"]
+            direction LR
+            VAD["Silero VAD<br/>句级判停"] --> STT["SenseVoice STT<br/>sherpa-onnx·中文"]
+            STT --> LM["Hermes LLM<br/>单次completion"]
+            LM --> TTS["edge-tts<br/>流式首帧→PCM"]
+        end
+        subgraph L4["④ 大脑/知识层"]
+            BR["Hermes Agent API :8642<br/>counselor 等 skill"]
+            CC["counselor_context.build()<br/>预注入 人设+热层+林老师回顾"]
+            VL["Obsidian vault<br/>咨询/ · 开场回顾状态"]
+        end
+        subgraph L5["本机语音环 · 平行"]
+            LO["orchestrator.py<br/>麦克风/扬声器 本地音频"]
+        end
+    end
+
+    C -- ①HTTPS 加载页与信令 --> TS --> WS -- ②/api/offer --> RT
+    C -- ③WebRTC 音频 --> WC -- ④媒体直达 --> RT
+    RT -- ⑤运行管线 --> L3
+    L3 -- ⑥system=CC.build() --> CC
+    CC --> BR
+    RT -- ⑦结束/api/save --> WS -- ⑧写会谈md --> VL
+    BR -. 载入skill/vault .-> VL
+    L3 -. 共用组件 .-> LO
+```
+
 **手机语音路径（3.3，主场景）：**
 ```
 手机 PWA(web_client/)
