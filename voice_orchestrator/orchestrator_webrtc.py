@@ -28,6 +28,8 @@ from orchestrator import (  # noqa: E402
 )
 from edge_tts_service import EdgeTTSService  # noqa: E402
 from sensevoice_stt import SenseVoiceSTTService  # noqa: E402
+from counselor_context import build as build_counselor_context  # noqa: E402
+from hermes_session import derive_session_id, end_session, first_user_text  # noqa: E402
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer  # noqa: E402
 from pipecat.audio.vad.vad_analyzer import VADParams  # noqa: E402
@@ -49,7 +51,9 @@ async def run_bot(transport: BaseTransport, _runner_args: RunnerArguments):
     """拼 WebRTC 版管线（与 orchestrator.py 同构，VAD 灵敏度放宽便于手机试）。"""
     stt = SenseVoiceSTTService()
     tts = EdgeTTSService()
-    llm = build_llm()  # Hermes 8642, key 从 .env 读，不硬编码
+    # 捕获本场 system_prompt(与传给 Hermes 的逐字一致) 用于会话结束归档
+    system_prompt = build_counselor_context()
+    llm = build_llm(system_instruction=system_prompt)  # Hermes 8642, key 从 .env 读
 
     context = LLMContext()
     vad = SileroVADAnalyzer(
@@ -96,6 +100,16 @@ async def run_bot(transport: BaseTransport, _runner_args: RunnerArguments):
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(_transport, _client):
         logger.info("📱 手机客户端断开")
+        # 会话结束：复刻 Hermes 指纹 session_id 并归档，避免 stateless 会话永不置 ended_at
+        try:
+            first_user = first_user_text(context.messages)
+            if first_user:
+                sid = derive_session_id(system_prompt, first_user)
+                await end_session(sid, load_hermes_api_key(), end_reason="conversation_ended")
+            else:
+                logger.info("[HermesSession] 本场无用户发言，无会话可归档")
+        except Exception as exc:
+            logger.warning(f"[HermesSession] 会话结束归档异常(不影响断开): {exc}")
         await runner.cancel()
 
     await runner.run()

@@ -83,14 +83,20 @@ def build_transport_params() -> LocalAudioTransportParams:
     )
 
 
-def build_llm() -> OpenAILLMService:
-    """把 LLM 指到本地 Hermes gateway API Server（完整 agent，OpenAI 兼容）。"""
+def build_llm(system_instruction: str | None = None) -> OpenAILLMService:
+    """把 LLM 指到本地 Hermes gateway API Server（完整 agent，OpenAI 兼容）。
+
+    system_instruction 缺省时调用 counselor_context 自动组装；外部(webrtc)可传入同一份
+    以便复刻 Hermes 的会话指纹(hermes_session.derive_session_id)。
+    """
     return OpenAILLMService(
         api_key=load_hermes_api_key(),
         base_url=HERMES_BASE_URL,
         settings=OpenAILLMService.Settings(
             model=HERMES_MODEL,
-            system_instruction=build_counselor_context(),  # 每场会话开始组装(预注入)
+            system_instruction=system_instruction
+            if system_instruction is not None
+            else build_counselor_context(),  # 每场会话开始组装(预注入)
         ),
     )
 
