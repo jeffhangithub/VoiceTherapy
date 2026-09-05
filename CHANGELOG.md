@@ -1,6 +1,13 @@
 # Changelog
 
-> 过去 24 小时（2026-09-02 → 2026-09-03）我们一起实现的优化小结。对应 `main` 提交 `d02475b…cf96258` 区间。
+> 过去 24 小时（2026-09-02 → 2026-09-03）我们一起实现的优化小结。对应 `main` 提交 `d02475b…66e26f0` 区间。
+
+## v1.9.1（2026-09-03）Hermes 会话生命周期修复
+
+- **背景**：VoiceTherapy 经 `/v1/chat/completions`(不带 `X-Hermes-Session-Id`) 调 Hermes。api_server 用 `sha256(system_prompt + 首条用户消息)` 指纹把整场归到一条 session（非每请求泄漏），但这些 stateless 会话**从不置 `ended_at`** → 孤儿累积。
+- **自动归档**：新增 `hermes_session.py`，会话结束(手机断开)时复刻同一指纹 session_id 并 `PATCH /api/sessions/{id}` 置 `ended_at`。复刻 id 经实测**逐字命中** Hermes 的 `X-Hermes-Session-Id`；纯附加、不动转写管线，指纹失配仅 404 无副作用。
+- **一次性清理**：将此前遗留的 **35 条** VoiceTherapy `api_server` 孤儿会话全部归档(仅填 `ended_at`，不删行)；飞书(feishu)等其它 source 会话**零触碰**（结构上按 `source='api_server'` 过滤，天然隔离）。
+- 变更：`hermes_session.py`(新) / `orchestrator.py` / `orchestrator_webrtc.py` / `CHANGELOG.md`。
 
 ## v1.9.0（2026-09-03）语音轨道全通 + 咨询大脑实装
 
