@@ -78,7 +78,7 @@ https://mac.tail844e3d.ts.net/ ── Tailscale Serve
                    (每场会话开始预注入: 人设 + 热层[过滤测试态] + 最近林老师会谈回顾)
                 → EdgeTTSService(edge→ffmpeg→PCM, 流式首帧)
                 → 手机扬声器(barge-in 可打断)
-  会话结束 → /api/save → vault 咨询/来访者/我/会谈/YYYY-MM-DD-AI-访谈.md
+  会话结束 → /api/save → vault raw/ai-therapy/YYYY-MM-DD-AI-访谈.md
 ```
 **本机语音路径（3.1/3.2，平行）：** `orchestrator.py`（麦克风/扬声器本地音频）与手机路径共用同一套 STT/LLM/TTS/VAD 与 `counselor_context`。
 
