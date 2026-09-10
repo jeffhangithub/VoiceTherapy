@@ -2,6 +2,13 @@
 
 > 过去 24 小时（2026-09-02 → 2026-09-03）我们一起实现的优化小结。对应 `main` 提交 `d02475b…66e26f0` 区间。
 
+## v1.9.2（2026-09-03）分层证据：可下钻到原始逐字稿
+
+- **背景**：App 之前只能到"咨询纪要/整理层"（L1/L2），够不到 `raw/咨询纪要/` 里的**原始录音逐字稿**（L3，说话人+时间戳+飞书妙记链接），缺"原始证据"。
+- **文字轨道**：`recall` skill 升 **v1.1.0**——路径常量纳入原始证据根；新增"分层证据"节：L2 不足时按需下钻 L3 逐字稿取原话/时间线证据，引用必带 **日期+说话人+时间戳**（+feishu_url），并对转写误差如实标注。
+- **语音轨道**：新增 `evidence_retrieval.py`——本地检索 L3 逐字稿（按标题/关键词选场、按说话人段落选块，返回可追溯证据块）；`EvidenceInjector` Pipecat 处理器插入 `user_aggregator → llm` 之间：识别"要原话/证据"意图 → 检索 → 作为 system 消息注入 → 大脑据此回应（纯附加、旁路、不阻塞；检索不到不注入）。
+- 变更：`evidence_retrieval.py`(新) / `orchestrator.py` / `orchestrator_webrtc.py` / recall skill(v1.1.0)。
+
 ## v1.9.1（2026-09-03）Hermes 会话生命周期修复
 
 - **背景**：VoiceTherapy 经 `/v1/chat/completions`(不带 `X-Hermes-Session-Id`) 调 Hermes。api_server 用 `sha256(system_prompt + 首条用户消息)` 指纹把整场归到一条 session（非每请求泄漏），但这些 stateless 会话**从不置 `ended_at`** → 孤儿累积。

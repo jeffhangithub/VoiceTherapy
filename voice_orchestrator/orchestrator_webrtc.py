@@ -28,6 +28,7 @@ from orchestrator import (  # noqa: E402
 )
 from edge_tts_service import EdgeTTSService  # noqa: E402
 from sensevoice_stt import SenseVoiceSTTService  # noqa: E402
+from evidence_retrieval import EvidenceInjector  # noqa: E402
 from counselor_context import build as build_counselor_context  # noqa: E402
 from hermes_session import derive_session_id, end_session, first_user_text  # noqa: E402
 
@@ -69,6 +70,7 @@ async def run_bot(transport: BaseTransport, _runner_args: RunnerArguments):
             transport.input(),
             stt,
             user_aggregator,
+            EvidenceInjector().processor,  # L3 原始证据按需注入(用户要原话/证据时)
             llm,
             tts,
             transport.output(),

@@ -141,6 +141,7 @@ def build_pipeline(transport: LocalAudioTransport, llm: OpenAILLMService) -> Pip
             transport.input(),
             stt,
             user_aggregator,
+            EvidenceInjector().processor,  # L3 原始证据按需注入(用户要原话/证据时)
             llm,
             tts,
             transport.output(),
