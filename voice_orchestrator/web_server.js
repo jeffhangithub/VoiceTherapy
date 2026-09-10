@@ -15,12 +15,12 @@ const PORT = Number(process.argv[2] || 8050);
 const RUNNER = "127.0.0.1";
 const RUNNER_PORT = 7860;
 const WEB_ROOT = path.join(__dirname, "web_client");
-// vault 会谈目录(写 AI 访谈记录)
+// AI 会谈落盘目录（raw 级原始素材，方案B：不再住 咨询/）
 const VAULT_SESSION_DIR = process.env.VT_VAULT
-  ? path.join(process.env.VT_VAULT, "咨询/来访者/我/会谈")
+  ? path.join(process.env.VT_VAULT, "raw/ai-therapy")
   : path.join(process.env.HOME || "",
       "Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff",
-      "咨询/来访者/我/会谈");
+      "raw/ai-therapy");
 const VOICE_MODE = "voice";
 
 const MIME = {
@@ -96,7 +96,7 @@ async function saveAiSession(body) {
   if (turns.length === 0) lines.push("> （本次无有效文字记录）", "");
   lines.push(`--- 记录自动保存于 ${date} ${hm}，共 ${durMin} 分钟、${turns.length} 条语句 ---`);
   fs.writeFileSync(file, lines.join("\n"), "utf8");
-  return { filename, path: `会谈/${filename}` };
+  return { filename, path: `raw/ai-therapy/${filename}` };
 }
 
 function proxy(req, res) {

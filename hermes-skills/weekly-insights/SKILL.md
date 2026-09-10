@@ -1,6 +1,6 @@
 ---
 name: weekly-insights
-description: "心理咨询周洞察。当 Jeff 说『本周复盘』『这周怎么样』『周报』，或收到可选 cron 触发时：读本周（ISO 周）在 咨询/来访者/我/会谈/ 下的 type:AI 会谈笔记，聚合反复出现的主题/模式/进展/未完成钩子，写入 洞察/YYYY-Wxx.md（覆盖本周文件），轻量更新 模式.md（仅追加新浮现的命名模式）。所有结论必须标记为『假设』、待 Jeff 修改确认，绝不当作定论。全程不写、不改任何 type:human 真人记录。"
+description: "心理咨询周洞察。当 Jeff 说『本周复盘』『这周怎么样』『周报』，或收到可选 cron 触发时：读本周（ISO 周）在 raw/ai-therapy/ 下的 type:AI 会谈笔记，聚合反复出现的主题/模式/进展/未完成钩子，写入 洞察/YYYY-Wxx.md（覆盖本周文件），轻量更新 模式.md（仅追加新浮现的命名模式）。所有结论必须标记为『假设』、待 Jeff 修改确认，绝不当作定论。全程不写、不改任何 type:human 真人记录。"
 version: 1.0.0
 author: Jeff
 ---
@@ -22,7 +22,7 @@ author: Jeff
 
 ## 角色与边界
 
-- **只读 AI 会谈 + 只写自家文件**：读 `咨询/来访者/我/会谈/` 下本周 `type: AI` 的会谈；只写 `咨询/洞察/YYYY-Wxx.md`（本周洞察）和 `咨询/来访者/我/模式.md`（轻量追加）。除此之外不新建、不覆盖、不删除任何文件。
+- **只读 AI 会谈 + 只写自家文件**：读 `raw/ai-therapy/` 下本周 `type: AI` 的会谈；只写 `咨询/洞察/YYYY-Wxx.md`（本周洞察）和 `咨询/来访者/我/模式.md`（轻量追加）。除此之外不新建、不覆盖、不删除任何文件。
 - **结论 = 假设，不是定论**：所有从记录里提炼的模式、判断，都写成「我观察到……（可能是/像是）」，并明确标注「待你确认」。绝不把推断当事实写死。
 - **不改真人记录**：`type: human` 文件（林老师会谈逐字稿、人工记录）只读不写，正文一字不改。
 - **非医疗、非危机干预工具**：与 counselor 相同，不诊断、不替代咨询师、危机只转介。若本周会谈里撞见危机相关记录，只如实引用、不展开。
@@ -33,7 +33,7 @@ author: Jeff
 VAULT   = <vault 根>   ← 默认 /Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff；vault 根可配置、可能变更（未来重构/换库），读写前先以 VT_VAULT 环境变量或 jeff-vault skill 确认实际根
 咨询根   = <VAULT>/咨询/
 
-来访者/我/会谈/            ← AI 会谈笔记（YYYY-MM-DD-AI-<标签>.md，含 date/type/focus/mode frontmatter）
+raw/ai-therapy/*.md        ← AI 会谈笔记（YYYY-MM-DD-AI-<标签>.md，含 date/type/focus/mode frontmatter）
 来访者/我/模式.md          ← 长期反复模式（命名后的索引；本 skill 只做轻量追加，不覆盖）
 洞察/YYYY-Wxx.md           ← 周洞察（本 skill 写；YYYY-Wxx = ISO 年-周号，如 2026-W35）
 ```
@@ -52,7 +52,7 @@ VAULT   = <vault 根>   ← 默认 /Users/ironsoul/Library/Mobile Documents/iClo
 
 1. 确认目标周（默认最近一个已结束的完整周；Jeff 点名某周则用那周）。
 2. 算出该周 `YYYY-Wxx`。
-3. 用 `search_files(target='files')` 列 `咨询/来访者/我/会谈/` 下的文件名，按 `YYYY-MM-DD` 前缀筛出该周日期范围内的候选。
+3. 用 `search_files(target='files')` 列 `raw/ai-therapy/` 下的文件名，按 `YYYY-MM-DD` 前缀筛出该周日期范围内的候选。
 
 ### 第 2 步：按 frontmatter 过滤（type: AI）
 
@@ -90,7 +90,7 @@ VAULT   = <vault 根>   ← 默认 /Users/ironsoul/Library/Mobile Documents/iClo
 date: {{YYYY-MM-DD}}
 type: insight
 week: {{YYYY-Wxx}}
-source: 会谈/（本周 AI 会谈）
+source: raw/ai-therapy/（本周 AI 会谈）
 status: 假设（待 Jeff 确认）
 ---
 

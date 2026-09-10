@@ -153,7 +153,7 @@ def build() -> str:
         try:
             txt = RECAP_FILE.read_text(encoding="utf-8")
             txt = re.sub(
-                r"last_recapped[^:\n]*[:：]([^\n]*)",
+                r"\*{0,3}last_recapped[^:\n]*[:：]([^\n]*)",
                 lambda m: f"**last_recapped**：{new_recap_date}",
                 txt, count=1,
             )

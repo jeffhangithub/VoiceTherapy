@@ -47,6 +47,7 @@ from pipecat.workers.runner import WorkerRunner
 
 from edge_tts_service import EdgeTTSService
 from sensevoice_stt import SenseVoiceSTTService
+from evidence_retrieval import EvidenceInjector
 
 # ---- 常量 ----
 SAMPLE_RATE = 16000  # 全链路 16kHz，Silero VAD 只支持 8000/16000

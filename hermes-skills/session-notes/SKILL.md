@@ -1,7 +1,7 @@
 ---
 name: session-notes
-description: "心理咨询会谈写回。当 Jeff 结束一次 AI 会谈（说「先这样」「结束」「我到了」，或收到 session.end 信号）时触发：新建 AI 会谈笔记 会谈/YYYY-MM-DD-AI-<标签>.md、覆盖更新 未完成.md、六槽有变化才更新 档案.md（注明日期）、新人物追加 人物与关系.md、有效技术追加 有效干预.md。所有写操作必须限定在 <vault>/咨询/ 内（含路径安全校验），永不修改 type:human 文件正文。"
-version: 1.0.0
+description: "心理咨询会谈写回。当 Jeff 结束一次 AI 会谈（说「先这样」「结束」「我到了」，或收到 session.end 信号）时触发：新建 AI 会谈笔记 raw/ai-therapy/YYYY-MM-DD-AI-<标签>.md（raw 级原始素材，方案B）、覆盖更新 咨询/来访者/我/未完成.md、六槽有变化才更新 档案.md（注明日期）、新人物追加 人物与关系.md、有效技术追加 有效干预.md。写会谈全文限 <vault>/raw/ai-therapy/ 内；写热层状态文件限 <vault>/咨询/ 内；永不修改 type:human 文件正文。"
+version: 1.1.0
 author: Jeff
 ---
 
@@ -21,24 +21,29 @@ author: Jeff
 
 ```text
 VAULT = <vault 根>   ← 默认 /Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff；vault 根可配置、可能变更（未来重构/换库），执行读写前先以 VT_VAULT 环境变量或 jeff-vault skill 确认当前实际 vault 根，勿盲目按旧绝对路径
-咨询根 = <VAULT>/咨询/
 
-来访者/我/会谈/           ← AI 单次会谈笔记（本 skill 新建）
-来访者/我/未完成.md       ← 每节结束覆盖更新
+AI_THERAPY = <VAULT>/raw/ai-therapy/            ← AI 单次会谈全文（本 skill 新建；raw 级原始素材，方案B）
+咨询根     = <VAULT>/咨询/
+
+来访者/我/未完成.md       ← 每节结束覆盖更新（热层状态文件）
 来访者/我/档案.md         ← 六槽档案（有变化才更新，注明日期）
 来访者/我/人物与关系.md   ← 新人物会后追加
 来访者/我/模式.md         ← 周/会后轻量更新（本 skill 只做轻量，不覆盖）
 来访者/我/有效干预.md     ← 有效技术会后追加
 ```
 
-首次运行若 `咨询/` 目录不存在，先创建它（含 `来访者/我/会谈/` 子目录）。所有写操作只发生在 `咨询/` 内部。
+**落盘分工**：AI 会谈**全文**写 `raw/ai-therapy/`（raw 级原始素材）；**热层状态文件**（未完成/档案/人物与关系/模式/有效干预）写 `咨询/来访者/我/`。
+
+首次运行：`raw/ai-therapy/` 与 `咨询/来访者/我/` 若不存在按需创建（创建时各自只创建自己那层，**绝不在 `咨询/` 下重建 `会谈/` 子目录**——该目录已废弃）。
 
 ## 安全路径校验（每次写操作前必须做）
 
 这是**最高优先级**的硬约束，任何写操作前都要校验：
 
-1. **限定在 `咨询/` 内**：任何待写入/待编辑的路径，都必须满足
-   `真实路径(目标) == 真实路径(<VAULT>/咨询/) 或其子路径`。用 `realpath` / 绝对路径前缀判断，禁止 `../`、符号链接越界、以及任何落到 `咨询/` 之外的目标。
+1. **按用途分别限定根目录**（两套，不可混用）：
+   - 写 **AI 会谈全文**（`YYYY-MM-DD-AI-<标签>.md`）→ 目标必须落在 `<VAULT>/raw/ai-therapy/` 内；
+   - 写 **热层状态文件**（未完成/档案/人物与关系/模式/有效干预.md）→ 目标必须落在 `<VAULT>/咨询/` 内。
+   用 `realpath` / 绝对路径前缀判断，禁止 `../`、符号链接越界、以及任何落到各自根之外的目标。
 2. **绝不碰 type:human 文件**：写回只针对 AI 会谈笔记（`type: AI`）和本系统自己维护的汇总文件（档案.md / 未完成.md / 人物与关系.md / 模式.md / 有效干预.md）。凡是 frontmatter 里有 `type: human` 的文件（如 `raw/咨询纪要/` 下的逐字稿、林老师会谈记录），**只读不写，正文一字不改**。
 3. **校验顺序**：先 `read_file` 读取目标文件头部 frontmatter，确认其 `type` 字段；再决定是否写入。对不确定类型的文件，默认不写。
 
@@ -48,26 +53,28 @@ Python 校验示例（可复制到脚本里用）：
 import os
 
 VAULT = os.environ.get("VT_VAULT", "/Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff")  # 默认 Jeff vault；可用 VT_VAULT 环境变量覆盖
-CONSULT = os.path.join(VAULT, "咨询")
+CONSULT    = os.path.join(VAULT, "咨询")            # 热层状态文件（档案/未完成/模式/...）
+AI_THERAPY = os.path.join(VAULT, "raw", "ai-therapy")  # AI 会谈全文（raw 级原始素材）
 
-def safe_target(path: str) -> bool:
-    """目标必须落在 <VAULT>/咨询/ 内，且不是 type:human 文件。"""
-    real_vault = os.path.realpath(VAULT)
-    real_consult = os.path.realpath(CONSULT)
+def _under(path: str, root: str) -> bool:
+    real_root = os.path.realpath(root)
     real_target = os.path.realpath(path)
-    # 1) 必须位于 咨询/ 之下（含 咨询/ 本身）
-    if not (real_target == real_consult or real_target.startswith(real_consult + os.sep)):
-        return False
-    return True
+    return real_target == real_root or real_target.startswith(real_root + os.sep)
+
+def safe_target(path: str, purpose: str = "consult") -> bool:
+    """按用途校验目标根：purpose='consult' → 限 <VAULT>/咨询/；
+    purpose='therapy' → 限 <VAULT>/raw/ai-therapy/。"""
+    root = AI_THERAPY if purpose == "therapy" else CONSULT
+    return _under(path, root)
 ```
 
-调用时：先 `safe_target(目标路径)` 返回 True 才写；返回 False 立即中止并报告。
+调用时：写会谈全文用 `safe_target(目标路径, purpose="therapy")`；写热层文件用 `safe_target(目标路径, purpose="consult")`。返回 True 才写；False 立即中止并报告。
 
 ## 写回工作流（按顺序执行）
 
 ### 第 1 步：新建 AI 会谈笔记
 
-在 `咨询/来访者/我/会谈/` 下新建 `YYYY-MM-DD-AI-<标签>.md`，`<标签>` 用本次会谈的一句话主题（英文/拼音或简短中文，无空格无特殊字符）。用下方「AI 会谈模板」填充，`mode` 填 `driving`（开车口述）或 `desk`（桌面打字），`focus` 填本次焦点。
+在 `raw/ai-therapy/` 下新建 `YYYY-MM-DD-AI-<标签>.md`（raw 级原始素材；写前用 `safe_target(path, purpose="therapy")` 校验），`<标签>` 用本次会谈的一句话主题（英文/拼音或简短中文，无空格无特殊字符）。用下方「AI 会谈模板」填充，`mode` 填 `driving`（开车口述）或 `desk`（桌面打字），`focus` 填本次焦点。
 
 ### 第 2 步：覆盖更新 未完成.md
 
@@ -138,12 +145,12 @@ crisis: false
 
 | 文件 | 何时写 | 方式 |
 |---|---|---|
-| 会谈/*.md | 每节 AI 会谈 | 新建 |
-| 未完成.md | 每节结束 | 覆盖 |
-| 档案.md | 六槽有变化 | 按槽更新（注明日期） |
-| 人物与关系.md | 出现新人物 | 追加 |
-| 模式.md | 周/会后 | 轻量追加 |
-| 有效干预.md | 出现有效技术 | 追加 |
+| raw/ai-therapy/YYYY-MM-DD-AI-<标签>.md | 每节 AI 会谈 | 新建（限 raw/ai-therapy/ 内） |
+| 咨询/来访者/我/未完成.md | 每节结束 | 覆盖（限 咨询/ 内） |
+| 咨询/来访者/我/档案.md | 六槽有变化 | 按槽更新（注明日期） |
+| 咨询/来访者/我/人物与关系.md | 出现新人物 | 追加 |
+| 咨询/来访者/我/模式.md | 周/会后 | 轻量追加 |
+| 咨询/来访者/我/有效干预.md | 出现有效技术 | 追加 |
 
 ## 边界规则
 
