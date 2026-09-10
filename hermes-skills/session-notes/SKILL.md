@@ -20,7 +20,7 @@ author: Jeff
 ## 路径常量
 
 ```text
-VAULT = /Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff
+VAULT = <vault 根>   ← 默认 /Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff；vault 根可配置、可能变更（未来重构/换库），执行读写前先以 VT_VAULT 环境变量或 jeff-vault skill 确认当前实际 vault 根，勿盲目按旧绝对路径
 咨询根 = <VAULT>/咨询/
 
 来访者/我/会谈/           ← AI 单次会谈笔记（本 skill 新建）
@@ -47,7 +47,7 @@ Python 校验示例（可复制到脚本里用）：
 ```python
 import os
 
-VAULT = "/Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff"
+VAULT = os.environ.get("VT_VAULT", "/Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff")  # 默认 Jeff vault；可用 VT_VAULT 环境变量覆盖
 CONSULT = os.path.join(VAULT, "咨询")
 
 def safe_target(path: str) -> bool:

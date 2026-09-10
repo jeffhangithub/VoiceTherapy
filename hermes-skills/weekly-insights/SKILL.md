@@ -13,7 +13,9 @@ author: Jeff
 
 ## 触发条件（10.4）
 
-- Jeff 说「本周复盘」「这周怎么样」「帮我看看这周」「周报」
+> **⚠️ 路由纠正（2026-09-07 Jeff 实测纠正）**：Jeff 说「一周回顾」「每周回顾」「回顾这周」「周报/本周复盘」时，**默认指向 evening-commute 的 Weekly Progress Review**（读 `raw/日记/` 流水账、只列做了什么、按领域分组、不写感受不评分），**不是本 skill**。2026-09-07 曾误用本 skill 启动周回顾，被 Jeff 纠正「不是用这个 skill，是用之前已经有的做日记的 skill（早晨/晚间/上班记录）」。本 skill 仅在用户意图明确指向 **咨询/AI 会谈/洞察聚合** 时使用（如「这周咨询复盘」「把本周 AI 会谈出洞察」）。拿不准时先按 evening-commute 日记路线走，不要默认拉 AI 会谈聚合。
+
+- Jeff 说「本周复盘」「这周怎么样」「帮我看看这周」「周报」（且上下文明确指向咨询 AI 会谈的洞察聚合）
 - 可选：cron 定时（如每周日晚，需设计运行时刻落在周一 00:00 之后、且与「当周会谈」的归周逻辑一致）
 
 **不触发**：日常闲聊、单次会谈进行中、历史检索（recall）、会谈结束写回（session-notes）。
@@ -28,7 +30,7 @@ author: Jeff
 ## 路径常量
 
 ```text
-VAULT   = /Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff
+VAULT   = <vault 根>   ← 默认 /Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff；vault 根可配置、可能变更（未来重构/换库），读写前先以 VT_VAULT 环境变量或 jeff-vault skill 确认实际根
 咨询根   = <VAULT>/咨询/
 
 来访者/我/会谈/            ← AI 会谈笔记（YYYY-MM-DD-AI-<标签>.md，含 date/type/focus/mode frontmatter）

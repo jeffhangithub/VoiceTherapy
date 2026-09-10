@@ -13,10 +13,14 @@ counselor_context.py — 咨询开场上下文组装器（供语音编排器预�
 """
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
-VAULT = Path.home() / "Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff"
+# Vault 根：优先读环境变量 VT_VAULT（允许未来重构换库/移动，无需改码），缺省回退到当前 Jeff vault。
+# 路径设计为"根可配、子路径派生"，故下方 MY/SYS/RECAP_FILE/HUMAN_DIR 均随 VAULT 自动跟随，只需在 VT_VAULT 处换根。
+_VAULT_DEFAULT = Path.home() / "Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff"
+VAULT = Path(os.environ.get("VT_VAULT", _VAULT_DEFAULT))
 MY = VAULT / "咨询" / "来访者" / "我"
 SYS = VAULT / "咨询" / "_系统"
 RECAP_FILE = MY / "开场回顾.md"

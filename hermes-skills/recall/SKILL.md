@@ -29,7 +29,7 @@ author: Jeff
 ## 路径常量
 
 ```text
-VAULT  = /Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff
+VAULT  = <vault 根>   ← 默认 /Users/ironsoul/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vaults/Jeff；vault 根可配置、可能变更（未来重构/换库），读写前先以 VT_VAULT 环境变量或 jeff-vault skill 确认实际根
 咨询根  = <VAULT>/咨询/
 
 来访者/我/会谈/            ← AI 会谈笔记（YYYY-MM-DD-AI-<标签>.md，含 date/type/focus/mode 等 frontmatter）
