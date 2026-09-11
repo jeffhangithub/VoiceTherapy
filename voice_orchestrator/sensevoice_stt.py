@@ -37,13 +37,28 @@ _NONSPEECH_TAG = re.compile(
 )
 # 2) 任意 SenseVoice 标签（如 <|zh|> <|itn|> <|Emotion|>）先剥掉
 _ANY_TAG = re.compile(r"<\|[^|]*\|>")
-# 3) 纯叹词/语气词（去掉标点空白后仅剩这些 → 视为呼吸/语气词，丢弃）
-_FILLER_CHARS = set("嗯唔呣呃哦噢喔唉哎哎额诶欸诶呀嘛唷喏哈嘿嘻呵噷嘸啊")
+# 3) 语气词/应答字集合
+_ANSWER_OK = set("嗯对好是行要中")                 # 单字可能是真实应答 → 保留
+_DEAD_FILLER = set("呃唔欸唉喂咦哦噢啊呀哇哈嘿嘻哎呕唷喏嘛嗳诶呣噷嘸")  # 非应答语气词 → 丢
 _PUNCT = re.compile(r"[\s，。、！？；：,.!?;:~～…·\-—'\"“”‘’()（）]+")
+_LATIN_RUN = re.compile(r"[A-Za-z]{3,}")            # 拉丁碎词(如 contacttact)→ 噪声/误识别
 
 
-def _clean_transcript(text: str) -> str:
-    """清理 SenseVoice 输出：剥标签、丢弃非语音事件与纯叹气/呼吸段落。返回 '' 表示丢弃。"""
+def _looks_like_noise(text: str, dur_s: float) -> bool:
+    """过短音频却出乱码/多字 → 判为噪声毛刺（B）。"""
+    if _LATIN_RUN.search(text):                    # 含 ≥3 连续拉丁字母，几乎必是误识别
+        return True
+    if dur_s < 0.7 and len(_PUNCT.sub("", text)) >= 3:   # <0.7s 却转出 3+ 字 → 毛刺
+        return True
+    return False
+
+
+def _clean_transcript(text: str, dur_s: float = 99.0) -> str:
+    """清理 SenseVoice 输出：剥标签、丢非语音事件、丢纯语气词/重复叹词、丢短噪声。返回 '' 表示丢弃。
+
+    A：单个"嗯/对/好"等可能真是应答 → 保留；只丢重复叹词(嗯嗯/呃呃)与非应答语气词(呃/唔/欸)。
+    B：过短音频却出拉丁碎词/多字乱码 → 判噪声丢弃。
+    """
     if not text:
         return ""
     if _NONSPEECH_TAG.search(text):     # 笑声/咳嗽/BGM/nospeech 等 → 整段非语音
@@ -52,8 +67,17 @@ def _clean_transcript(text: str) -> str:
     core = _PUNCT.sub("", t)
     if not core:
         return ""
-    if all(ch in _FILLER_CHARS for ch in core):  # 纯"嗯/呃/啊…"→ 呼吸或语气词
+    if _looks_like_noise(t, dur_s):      # B：短音频噪声
         return ""
+    if len(core) == 1:                   # A：单字
+        return "" if core in _DEAD_FILLER else t   # 呃/唔/啊→丢；嗯/对/好/累…→留
+    # A：多字且全是语气/应答字
+    if all(ch in (_ANSWER_OK | _DEAD_FILLER) for ch in core):
+        if len(set(core)) == 1:          # 重复同一字(嗯嗯/呃呃/对对)→丢
+            return ""
+        if any(ch in _ANSWER_OK for ch in core) and not any(ch in _DEAD_FILLER for ch in core):
+            return t                     # 嗯对/嗯好 等含真实应答字 → 留
+        return ""                        # 嗯呃 等含非应答语气字 → 丢
     return t
 
 
@@ -120,10 +144,11 @@ class SenseVoiceSTTService(SegmentedSTTService):
         logger.info(f"[SenseVoice] run_stt 收到 {len(audio)} 字节音频")
         loop = asyncio.get_running_loop()
         raw = await loop.run_in_executor(None, self._transcribe_sync, audio)
-        text = _clean_transcript(raw)
+        dur_s = len(audio) / 2 / 16000  # 16-bit mono @16k
+        text = _clean_transcript(raw, dur_s)
         if not text:
             if raw:
-                logger.info(f"[SenseVoice] 过滤非语音/叹词/噪声, 丢弃: {raw!r}")
+                logger.info(f"[SenseVoice] 过滤非语音/叹词/噪声({dur_s:.2f}s), 丢弃: {raw!r}")
             return
         yield TranscriptionFrame(text=text, user_id="", timestamp=str(time.time()))
 
