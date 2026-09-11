@@ -1,6 +1,12 @@
 # Changelog
 
-> 过去 24 小时（2026-09-02 → 2026-09-03）我们一起实现的优化小结。对应 `main` 提交 `d02475b…66e26f0` 区间。
+> VoiceTherapy 迭代优化小结（倒序，最新在上）。
+
+## v1.9.4（2026-09-11）会话卫生：VoiceTherapy 会话不再堆积在 `/sessions`
+
+- **背景**：Hermes 的 `/sessions` 默认只隐藏 `subagent/tool`，`api_server`（VoiceTherapy）会话只要未归档就会出现在列表里，长期堆积。
+- **本次**：清理历史遗留孤儿会话（1 条早于 counselor 预注入的 OPEN 会话，指纹对不上未被自动归档）+ 把已结束的 VoiceTherapy 会话置 `archived=1`，使其从 `/sessions` 消失（飞书等其他渠道会话分毫未动）。
+- **⚠️ 待办（未做）**：Hermes 的 `PATCH /api/sessions/{id}` 只接受 `title/end_reason`，**不支持 `archived`** → 自动归档（`hermes_session.end_session`）目前只置 `ended_at`，新会话仍会出现在 `/sessions`。要一劳永逸需在结束时直写 `state.db` 置 `archived=1`（简单可逆，待定）。
 
 ## v1.9.3（2026-09-11）长会谈卡顿与断句修复 + 逐字记录时间线
 

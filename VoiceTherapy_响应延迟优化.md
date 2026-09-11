@@ -91,3 +91,27 @@
 | 首字出声(前瞻 TTS) | 可选 | 原生易做 | 原生音频栈更灵活 |
 
 **同一原则**：延迟优化的大头（ASR 位置、LLM 首 token、TTS 首 chunk）与"浏览器 or 原生"无关，属**共性**；2.0 原生因 native 音频栈，TTS/ASR 微调更自由。
+
+---
+
+## 6. 长会谈内的延迟劣化与断句（2026-09-11 实测修复）
+
+> 与 P1–P4 关注「单回合首声」不同，本节关注**会话进行到后段**的稳定性——53 分钟会谈在 ~50min 处明显卡顿 + 出现「半段」。
+
+### 现象与证据（据 runner 日志）
+- LLM `prompt tokens` 全程**单调增长到 36k+**（整段历史每轮重发）。
+- LLM `TTFAT`（含 thinking）尾段升到 **3.8–5.1s**（会话早期 ~1s）。
+- 同一时段 **8+ 次** `EdgeTTSService exception: No audio was received`，每次 = 某句没生成音频被丢 → 「半段」。
+
+### 两个真因与修法
+| # | 真因 | 修法 |
+|---|---|---|
+| ① 卡顿 | 上下文随会话越滚越大 → LLM 越慢 | 开启 pipecat **上下文自动摘要**：`LLMAssistantAggregatorParams(enable_auto_context_summarization=True, max_context_tokens=12000, max_unsummarized_messages=40)`——较早对话压缩成摘要，绑住 prompt 规模 |
+| ② 半段 | edge-tts 间歇返回空音频（瞬时故障） | `edge_tts_service._synth_to_pcm` 加**最多 3 次重试**（0.3/0.6s 退避）；仍空则**静默跳过该句**、不抛错中断管线 |
+
+### 验收
+- 长会谈（>40min）`prompt tokens` **有界**（不随会谈时长线性增长）；`TTFAT` 不因会话变长而单调上升。
+- 日志不再出现成串 `No audio was received` 丢句。
+- 附：落盘逐字记录带 `[HH:MM:SS]` 北京时间时间线（便于回看与证据定位）。
+
+> 定位：本节是**会话内稳定性**；P1–P4 是**单回合提速**——两者叠加。

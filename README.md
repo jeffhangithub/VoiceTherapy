@@ -41,8 +41,9 @@ flowchart TB
         subgraph L3["③ 语音管线层 · Pipecat"]
             direction LR
             VAD["Silero VAD<br/>句级判停"] --> STT["SenseVoice STT<br/>sherpa-onnx·中文"]
-            STT --> LM["Hermes LLM<br/>单次completion"]
-            LM --> TTS["edge-tts<br/>流式首帧→PCM"]
+            STT --> EV["EvidenceInjector<br/>L3逐字稿证据按需注入"]
+            EV --> LM["Hermes LLM<br/>单次completion<br/>+上下文自动摘要"]
+            LM --> TTS["edge-tts<br/>流式首帧→PCM<br/>空音频重试"]
         end
         subgraph L4["④ 大脑/知识层"]
             BR["Hermes Agent API :8642<br/>counselor 等 skill"]
@@ -74,11 +75,13 @@ https://mac.tail844e3d.ts.net/ ── Tailscale Serve
        └→ orchestrator_webrtc.py(:7860)  SmallWebRTCTransport runner
             └→ Pipecat 管线：
                 手机麦克风 → VAD(判停) → SenseVoiceSTT(本地中文, 整段转写)
+                → EvidenceInjector(要"原话/证据"时，本地检索 L3 逐字稿→注入)
                 → Hermes 大脑(8642) —— 系统指令 = counselor_context.build()
                    (每场会话开始预注入: 人设 + 热层[过滤测试态] + 最近林老师会谈回顾)
-                → EdgeTTSService(edge→ffmpeg→PCM, 流式首帧)
+                   · 上下文自动摘要(>12k token 压缩较早对话，防长会谈变慢)
+                → EdgeTTSService(edge→ffmpeg→PCM, 流式首帧; 空音频自动重试)
                 → 手机扬声器(barge-in 可打断)
-  会话结束 → /api/save → vault raw/ai-therapy/YYYY-MM-DD-AI-访谈.md
+  会话结束 → /api/save → vault raw/ai-therapy/YYYY-MM-DD-AI-访谈.md（逐字记录带 [HH:MM:SS] 北京时间时间线）
 ```
 **本机语音路径（3.1/3.2，平行）：** `orchestrator.py`（麦克风/扬声器本地音频）与手机路径共用同一套 STT/LLM/TTS/VAD 与 `counselor_context`。
 
@@ -86,8 +89,12 @@ https://mac.tail844e3d.ts.net/ ── Tailscale Serve
 
 **关键设计取舍：**
 - **预注入而非现场翻库**：语音是单次 chat completion，大脑若现场 agentic 读 vault 会卡死(80s+) → 开场由 `counselor_context` 拼好注入。
+- **分层证据（L1→L3）**：L1 纪要摘要 → L2 咨询整理层 → L3 原始逐字稿。要「原话/证据」时，语音侧 `EvidenceInjector` 本地检索 L3 逐字稿（带日期+说话人+时间戳）按需注入；文字轨道 `recall` skill 亦可按需下钻 L3。
+- **长会话稳定**：上下文自动摘要（>12k token 或攒够 40 条即压缩较早对话）防 LLM 随会话增长变慢；TTS 空音频自动重试防丢句「半段」。
+- **逐字记录可追溯**：落盘每条带 `[HH:MM:SS]` 时间线（**北京时间** UTC+8，不依赖 Mac 本机时区）。
+- **会话生命周期**：每场结束复刻指纹归档对应 Hermes 会话（置 `ended_at`），不留未关会话。
 - **数据卫生**：`status:测试` 的占位不被当真实背景；原始音频仅内存处理，不落盘不入日志；真实咨询内容只存本地 vault。
-- **延迟**：本地 ASR(SenseVoice) + 同 WiFi；P1/P2(TTS 流式首帧/轻 persona) 已在分支。
+- **延迟**：本地 ASR(SenseVoice) + 同 WiFi；TTS 流式首帧 / 轻 persona（详见 `VoiceTherapy_响应延迟优化.md`）。
 
 ## 当前版本更新说明
 
@@ -104,8 +111,12 @@ https://mac.tail844e3d.ts.net/ ── Tailscale Serve
 - **识别**：本地 **SenseVoice**（sherpa-onnx，中文专用，带标点；比 whisper 更快更准）
 - **咨询大脑**：开场预注入 `counselor_context`（人设 + 热层 + 最近林老师会谈回顾；过滤测试态占位；护栏：不因沉默退出、不擅自删改档案）
 - **定制 PWA 客户端**：咨询师主题界面、计时器、实时转写+历史、暂停/退出、结束自动存 `AI-访谈` 到 vault
+- **分层证据检索**：要「原话/具体说了什么」时能下钻到 `raw/咨询纪要/` 的 **L3 原始逐字稿**（带 日期+说话人+时间戳+飞书妙记链接）；语音侧 `EvidenceInjector` 按需注入，文字轨道 `recall` skill 同步支持
+- **长会谈稳定**：上下文自动摘要（防 ~50min 后上下文暴涨→LLM 变慢）+ TTS 空音频自动重试（防丢句「半段」）
+- **逐字记录时间线**：会谈落盘每条带 `[HH:MM:SS]`（北京时间）
+- **会话生命周期**：每场结束自动归档 Hermes 会话（置 `ended_at`），不留未关会话
 
-规划文档：`VoiceTherapy_2.0_开发计划.md`（原生 App + 免托管 AEC 路线）、`VoiceTherapy_响应延迟优化.md`（P1/P2 已完成于分支 `feat/latency-p1-p2`）。
+规划文档：`VoiceTherapy_2.0_开发计划.md`（原生 App + 免托管 AEC 路线）、`VoiceTherapy_响应延迟优化.md`（P1/P2 已并入 main；含长会谈延迟劣化修复）。
 
 ## 仓库架构
 
@@ -126,6 +137,8 @@ VoiceTherapy/
     ├── faster_whisper_stt.py        #   备选 STT(faster-whisper，中文弱，默认已换 SenseVoice)
     ├── edge_tts_service.py          #   中文 TTS(edge→ffmpeg→PCM；流式首帧)
     ├── counselor_context.py         #   咨询开场上下文组装器(预注入人设+热层+林老师回顾)
+    ├── evidence_retrieval.py        #   分层证据：本地检索 L3 逐字稿 + EvidenceInjector(按需注入证据)
+    ├── hermes_session.py            #   Hermes 会话生命周期(结束复刻指纹→归档 ended_at)
     ├── web_server.js                #   自定义页静态 + /api/offer 反代到 runner + /api/save 存库
     ├── web_client/                  #   定制咨询师 PWA(index/styles/main/manifest/icon)
     └── asr_models/                  #   (gitignore)SenseVoice onnx 模型，按需下载，不入库
