@@ -2,6 +2,14 @@
 
 > 过去 24 小时（2026-09-02 → 2026-09-03）我们一起实现的优化小结。对应 `main` 提交 `d02475b…66e26f0` 区间。
 
+## v1.9.3（2026-09-11）长会谈卡顿与断句修复 + 逐字记录时间线
+
+- **背景**：53 分钟会谈到 ~50min 时明显卡顿、反馈句子出现"半段"。日志定位两个独立真因。
+- **① 卡顿 = 上下文暴涨**：全程 `prompt tokens` 涨到 36k+，LLM `TTFAT` 尾段升到 3.8–5.1s。修复：开启 pipecat **上下文自动摘要**（`LLMAssistantAggregatorParams(enable_auto_context_summarization=True, max_context_tokens=12000, max_unsummarized_messages=40)`），较早对话自动压缩成摘要，绑住 prompt 规模。改 `orchestrator.py` + `orchestrator_webrtc.py`。
+- **② 半段 = edge-tts 间歇空音频**：末段 20:47–20:53 出现 8+ 次 `No audio was received`，每次丢一句。修复：`edge_tts_service.py` `_synth_to_pcm` 加**最多 3 次重试**（0.3/0.6s 退避），仍空则静默跳过该句、不抛错中断管线。
+- **③ 逐字记录时间线（北京时间）**：`web_client/main.js` 每句气泡记 `ts`；`web_server.js` 落盘时按 **UTC+8** 给每句加 `[HH:MM:SS]` 前缀（`bj()`，不依赖 Mac Mini 本机时区），表头标"（北京时间）"。
+- 变更：`edge_tts_service.py` / `orchestrator.py` / `orchestrator_webrtc.py` / `web_client/main.js` / `web_server.js`。
+
 ## v1.9.2（2026-09-03）分层证据：可下钻到原始逐字稿
 
 - **背景**：App 之前只能到"咨询纪要/整理层"（L1/L2），够不到 `raw/咨询纪要/` 里的**原始录音逐字稿**（L3，说话人+时间戳+飞书妙记链接），缺"原始证据"。

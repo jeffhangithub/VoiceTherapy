@@ -55,15 +55,19 @@ function readBody(req) {
 }
 
 function pad(n) { return String(n).padStart(2, "0"); }
-function nowLocal() {
-  const d = new Date();
-  return { date: `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,
-           hm: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+// 北京时间(UTC+8, 无夏令时) —— 不依赖服务器本机时区(Mac Mini 时区与 Jeff/手机不一致)
+function bj(tsMs) {
+  const d = new Date((tsMs == null ? Date.now() : tsMs) + 8 * 3600 * 1000);
+  return {
+    date: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`,
+    hm: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`,
+    hms: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`,
+  };
 }
 
 async function saveAiSession(body) {
-  // body: { transcript:[{who:'user'|'bot', text}], duration_s }
-  const { date, hm } = nowLocal();
+  // body: { transcript:[{who:'user'|'bot', text, ts}], duration_s }
+  const { date, hm } = bj(Date.now());
   const filename = `${date}-AI-访谈.md`;
   const file = path.join(VAULT_SESSION_DIR, filename);
   fs.mkdirSync(VAULT_SESSION_DIR, { recursive: true });
@@ -82,7 +86,7 @@ async function saveAiSession(body) {
     "---",
     `# ${date} AI访谈（语音）`,
     "",
-    `> ${date} ${hm} · 时长 ${dur} · 经语音对话完成`,
+    `> ${date} ${hm}（北京时间） · 时长 ${dur} · 经语音对话完成`,
     "",
     "## 逐字记录",
     "",
@@ -90,7 +94,8 @@ async function saveAiSession(body) {
   for (const t of turns) {
     if (!t?.text) continue;
     const who = t.who === "user" ? "我" : "咨询师";
-    lines.push(`> **${who}**：${t.text.trim()}`);
+    const stamp = t.ts ? `[${bj(t.ts).hms}] ` : "";   // 北京时间时间线
+    lines.push(`> ${stamp}**${who}**：${t.text.trim()}`);
     lines.push("");
   }
   if (turns.length === 0) lines.push("> （本次无有效文字记录）", "");

@@ -37,10 +37,12 @@ from pipecat.audio.vad.vad_analyzer import VADParams  # noqa: E402
 from pipecat.pipeline.pipeline import Pipeline  # noqa: E402
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker, ProcessorUnusablePolicy  # noqa: E402
 from pipecat.processors.aggregators.llm_context import LLMContext  # noqa: E402
-from pipecat.processors.aggregators.llm_response_universal import (  # noqa: E402
+from pipecat.processors.aggregators.llm_response_universal import (
+    LLMAssistantAggregatorParams,
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from pipecat.utils.context.llm_context_summarization import LLMAutoContextSummarizationConfig
 from pipecat.runner.types import RunnerArguments  # noqa: E402
 from pipecat.transports.base_transport import BaseTransport, TransportParams  # noqa: E402
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection  # noqa: E402
@@ -63,6 +65,14 @@ async def run_bot(transport: BaseTransport, _runner_args: RunnerArguments):
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(vad_analyzer=vad),
+        # 上下文自动摘要: 超阈值压缩较早对话, 防长会谈 prompt 暴涨→LLM 变慢
+        assistant_params=LLMAssistantAggregatorParams(
+            enable_auto_context_summarization=True,
+            auto_context_summarization_config=LLMAutoContextSummarizationConfig(
+                max_context_tokens=12000,
+                max_unsummarized_messages=40,
+            ),
+        ),
     )
 
     pipeline = Pipeline(

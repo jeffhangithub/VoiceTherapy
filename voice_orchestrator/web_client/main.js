@@ -62,6 +62,7 @@ function botTalking(on) {
 function addBubble(who) {
   const b = document.createElement("div");
   b.className = "bubble " + who;
+  b.dataset.ts = String(Date.now());   // 每句时间戳(epoch ms)，供落盘生成时间线
   chat.appendChild(b); chat.scrollTop = chat.scrollHeight;
   return b;
 }
@@ -148,7 +149,8 @@ function collectTranscript() {
     const text = (el.textContent || "").trim();
     if (!text) continue;
     const who = el.classList.contains("user") ? "user" : "bot";
-    out.push({ who, text });
+    const ts = Number(el.dataset.ts) || null;
+    out.push({ who, text, ts });
   }
   return out;
 }

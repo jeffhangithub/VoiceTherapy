@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import io
 import subprocess
+import time
 
 import edge_tts
 from loguru import logger
@@ -40,7 +41,7 @@ class EdgeTTSService(TTSService):
         self._sr = sample_rate
 
     # ---- 同步核心: 合成 MP3 → ffmpeg 解码成 PCM(在 executor 线程跑) ----
-    def _synth_to_pcm(self, text: str) -> bytes:
+    def _synth_to_pcm(self, text: str, attempts: int = 3) -> bytes:
         async def _stream() -> bytes:
             com = edge_tts.Communicate(text, voice=self._voice)
             buf = io.BytesIO()
@@ -49,7 +50,22 @@ class EdgeTTSService(TTSService):
                     buf.write(chunk["data"])
             return buf.getvalue()
 
-        mp3 = asyncio.run(_stream())  # executor 线程无事件循环, 可安全 asyncio.run
+        # edge-tts 偶发 "No audio was received"(瞬时故障)——重试, 避免丢句导致"半段"
+        mp3 = b""
+        last_err = None
+        for i in range(max(1, attempts)):
+            try:
+                mp3 = asyncio.run(_stream())  # executor 线程无事件循环, 可安全 asyncio.run
+                if mp3:
+                    break
+                last_err = "empty audio"
+            except Exception as exc:  # noqa: BLE001
+                last_err = exc
+            if i < attempts - 1:
+                time.sleep(0.3 * (i + 1))
+        if not mp3:
+            logger.warning(f"[TTS] edge-tts 重试{attempts}次仍空音频, 跳过该句: {text[:40]!r} ({last_err})")
+            return b""
         p = subprocess.run(
             [
                 _FFMPEG, "-loglevel", "error",
@@ -67,6 +83,8 @@ class EdgeTTSService(TTSService):
         logger.info(f"[TTS] run_tts 收到文字: {text[:60]!r}")
         loop = asyncio.get_running_loop()
         pcm = await loop.run_in_executor(None, self._synth_to_pcm, text)
+        if not pcm:
+            return  # 空音频(瞬时故障已重试), 静默跳过, 不抛错中断管线
         logger.info(f"[TTS] 合成 PCM {len(pcm)} 字节, 开始播放")
         # 切成 ~100ms 帧逐段 yield, 便于打断(barge-in)在帧边界停播
         # 注意: 必须 yield TTSAudioRawFrame(带 context_id, 继承 OutputAudioRawFrame),

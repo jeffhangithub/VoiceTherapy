@@ -38,9 +38,11 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
+    LLMAssistantAggregatorParams,
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from pipecat.utils.context.llm_context_summarization import LLMAutoContextSummarizationConfig
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.transports.local.audio import LocalAudioTransport, LocalAudioTransportParams
 from pipecat.workers.runner import WorkerRunner
@@ -134,6 +136,14 @@ def build_pipeline(transport: LocalAudioTransport, llm: OpenAILLMService) -> Pip
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(vad_analyzer=vad),
+        # 上下文自动摘要: 超阈值时把较早对话压缩成摘要, 防长会谈 prompt 暴涨→LLM 变慢(50min 后卡顿的根因)
+        assistant_params=LLMAssistantAggregatorParams(
+            enable_auto_context_summarization=True,
+            auto_context_summarization_config=LLMAutoContextSummarizationConfig(
+                max_context_tokens=12000,        # 约 12k token 触发压缩
+                max_unsummarized_messages=40,    # 或攒够 40 条新消息也压缩
+            ),
+        ),
     )
 
     pipeline = Pipeline(
