@@ -140,8 +140,8 @@ VoiceTherapy/
     ├── counselor_context.py         #   咨询开场上下文组装器(预注入人设+热层+林老师回顾)
     ├── evidence_retrieval.py        #   分层证据：本地检索 L3 逐字稿 + EvidenceInjector(按需注入证据)
     ├── hermes_session.py            #   Hermes 会话生命周期(结束复刻指纹→归档 ended_at)
-    ├── hermes_brain.py              #   (遗留)早期独立 Hermes 客户端，当前管线未接线
     ├── README.md                    #   B 层说明文档
+    ├── archive/                     #   已退役文件(hermes_brain.py 等，不参与运行)
     ├── web_server.js                #   自定义页静态 + /api/offer 反代到 runner + /api/save 存库
     ├── web_client/                  #   定制咨询师 PWA(index/styles/main/manifest/icon)
     └── asr_models/                  #   (gitignore)SenseVoice onnx 模型，按需下载，不入库
