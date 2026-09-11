@@ -116,6 +116,7 @@ https://mac.tail844e3d.ts.net/ ── Tailscale Serve
 - **长会谈稳定**：上下文自动摘要（防 ~50min 后上下文暴涨→LLM 变慢）+ TTS 空音频自动重试（防丢句「半段」）
 - **逐字记录时间线**：会谈落盘每条带 `[HH:MM:SS]`（北京时间）
 - **会话生命周期**：每场结束自动归档 Hermes 会话（置 `ended_at`），不留未关会话
+- **咨询督导（supervision）**：会谈逐字记录 → ChatGPT 督导意见 → **deepseek-v4-pro** 深分析落地为咨询师**人设/结构/话术/思考结构**的迭代（`supervision` skill；半自动，见 `咨询/督导/`）
 
 规划文档：`VoiceTherapy_2.0_开发计划.md`（原生 App + 免托管 AEC 路线）、`VoiceTherapy_响应延迟优化.md`（P1/P2 已并入 main；含长会谈延迟劣化修复）。
 
