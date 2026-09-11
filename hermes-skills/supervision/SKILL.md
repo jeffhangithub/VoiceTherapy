@@ -1,7 +1,7 @@
 ---
 name: supervision
 description: "咨询督导。当 Jeff 要给 AI 咨询师（counselor）做督导时触发：(A) 生成督导请求——把某场会谈逐字记录 + 督导指令整理成可粘贴给 ChatGPT 的 md；(B) 落地督导反馈——把 ChatGPT 返回的督导 md 解析成结构化建议，映射到 counselor 的『风格/结构/话术/思考结构』四类锚点，产出待 Jeff 确认的具体改动。不自动改行为。关键词：督导、supervision、咨询师督导、ChatGPT 督导、调整咨询师风格结构话术。"
-version: 1.0.0
+version: 1.1.0
 author: Jeff
 ---
 
@@ -44,6 +44,12 @@ VAULT   = <vault 根>（先认 VT_VAULT，否则默认 Jeff vault）
 4. 落 `咨询/督导/请求_<日期>.md`；把**全文**给 Jeff 去粘 ChatGPT。
 
 ## B. 落地督导反馈（核心）
+> ⚠️ **本步必须用深度推理模型 `deepseek-v4-pro`（不是默认的 flash）**——分析督导、找改进、迭代人设需要深思考。执行方式：把「读反馈 md → 解析四维 → 映射锚点 → 起草拟定改动」作为一个自包含任务，交给一个**固定到 pro 的 Hermes 一次性进程**跑：
+> ```
+> hermes -z "<任务：读 <反馈md绝对路径>，按 supervision skill 的 B 步产出四维归类 + 逐条拟定改动(diff)>" -m deepseek-v4-pro --provider deepseek
+> ```
+> 把它返回的拟定改动拿回来核实，再给 Jeff 确认。（若当前会话本身已在 pro 上，可直接做。）
+
 1. 读 Jeff 放入的 `咨询/督导/反馈_<日期>.md`（ChatGPT 输出）。
 2. **解析**：按 ①②③④ 四维归类提取建议；识别「最该改的 3 点」。
 3. **映射锚点**（哪类建议 → 改哪个文件）：
@@ -69,4 +75,5 @@ VAULT   = <vault 根>（先认 VT_VAULT，否则默认 Jeff vault）
 - **督导不替代真人督导/咨询**：这是 AI 咨询师的行为调优输入，不涉及 Jeff 本人的治疗判断。
 
 ## Version History
+- 1.1.0 — B 步（落地督导分析）****强制用 `deepseek-v4-pro` 深度推理**（经 `hermes -z … -m deepseek-v4-pro --provider deepseek` 一次性进程），不再用默认 flash。
 - 1.0.0 — 初始：A 组督导请求（四维）+ B 落地反馈（四维映射四锚点，先确认后改，双版本同步）。

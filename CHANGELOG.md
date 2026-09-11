@@ -8,6 +8,7 @@
   - **A 生成督导请求**：读某场会谈逐字记录 → 组「四维（风格/结构/话术/思考结构）+ 观察→假设→建议」的请求 md，供 Jeff 粘贴给 ChatGPT。
   - **B 落地反馈**：解析 ChatGPT 督导 md → 四类映射锚点（风格→`counselor_context._PERSONA`；结构→counselor skill 状态机；话术→skill 人设语言；思考结构→框架）→ 出**拟定改动**待确认 → 双版本同步。
 - **半自动**：Jeff 手动在 ChatGPT 获取督导、存 md 导入（无 OpenAI key，不走 API）。
+- **B 步强制深推理**：落地督导分析**用 `deepseek-v4-pro`**（非默认 flash）——经 `hermes -z "<任务>" -m deepseek-v4-pro --provider deepseek` 一次性进程跑，深思考后出拟定改动。
 - **落点**：vault `咨询/督导/`（`请求_*.md` / `反馈_*.md` / README）；逐字记录敏感，**不入仓库**。
 
 ## v1.9.7（2026-09-11）咨询师表达风格调简练
