@@ -50,7 +50,7 @@
 - **WebRTC 手机路径**：手机浏览器 ↔ Mac Mini runner(7860) ↔ Hermes 大脑(8642)，对话 + barge-in 真机验证可用。
 - **常驻免重扫**：Mac Mini `launchd` 自启 runner + Tailscale Serve（URL 永久固定，首次加主屏幕成 PWA 图标即可）。
 - **定制咨询师 PWA**（`web_client/` + `web_server.js`）：咨询师主题界面、计时器、实时转写 + 历史气泡、开始/暂停/结束。
-- **结束自动存库**：`/api/save` 在会话结束把逐字稿写成 vault `咨询/来访者/我/会谈/YYYY-MM-DD-AI-访谈.md`。
+- **结束自动存库**：`/api/save` 在会话结束把逐字稿写成 vault `咨询/来访者/我/会谈/YYYY-MM-DD-AI-访谈.md`。（后按方案B迁至 `raw/ai-therapy/`，见 v1.9.2/迁移单）
 - **UI 打磨**：对话改成微信式**逐句气泡**（每条 bot 回复独立成泡，不再堆成大段）；开始/结束按钮**固定底部**不随文字被顶走；通话中自动压缩问候区给对话让位。
 
 ### 🔊 语音识别（ASR）持续升级

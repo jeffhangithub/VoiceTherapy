@@ -129,7 +129,7 @@ VoiceTherapy/
 ├── VoiceTherapy_2.0_开发计划.md     # 2.0 原生 App 路线
 ├── VoiceTherapy_响应延迟优化.md     # 响应延迟分析与 P1-P4 路径
 ├── VoiceTherapy_公开化改造计划.md   # 个人版(Tailscale)→公开版(云信令+SFU/TURN)架构演进
-├── hermes-skills/                   # 【C层 Hermes】咨询 skill（counselor/session-notes/recall/weekly-insights）
+├── hermes-skills/                   # 【C层 Hermes】咨询 skill（counselor + counselor/counseling-notes-jeff + session-notes + recall + weekly-insights）
 ├── templates/vault-structure/       # 【D层 vault】Obsidian 目录空模板
 └── voice_orchestrator/              # 【B层 语音编排】本仓库软件本体
     ├── orchestrator.py              #   本机实时语音环(pipeline 入口)
@@ -140,6 +140,8 @@ VoiceTherapy/
     ├── counselor_context.py         #   咨询开场上下文组装器(预注入人设+热层+林老师回顾)
     ├── evidence_retrieval.py        #   分层证据：本地检索 L3 逐字稿 + EvidenceInjector(按需注入证据)
     ├── hermes_session.py            #   Hermes 会话生命周期(结束复刻指纹→归档 ended_at)
+    ├── hermes_brain.py              #   (遗留)早期独立 Hermes 客户端，当前管线未接线
+    ├── README.md                    #   B 层说明文档
     ├── web_server.js                #   自定义页静态 + /api/offer 反代到 runner + /api/save 存库
     ├── web_client/                  #   定制咨询师 PWA(index/styles/main/manifest/icon)
     └── asr_models/                  #   (gitignore)SenseVoice onnx 模型，按需下载，不入库
