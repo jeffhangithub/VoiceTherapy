@@ -40,7 +40,7 @@ flowchart TB
         end
         subgraph L3["③ 语音管线层 · Pipecat"]
             direction LR
-            VAD["Silero VAD<br/>句级判停"] --> STT["SenseVoice STT<br/>sherpa-onnx·中文"]
+            VAD["Silero VAD<br/>句级判停·收紧抗噪"] --> STT["SenseVoice STT<br/>sherpa-onnx·中文<br/>非语音/叹词过滤"]
             STT --> EV["EvidenceInjector<br/>L3逐字稿证据按需注入"]
             EV --> LM["Hermes LLM<br/>单次completion<br/>+上下文自动摘要"]
             LM --> TTS["edge-tts<br/>流式首帧→PCM<br/>空音频重试"]
@@ -74,7 +74,7 @@ https://mac.tail844e3d.ts.net/ ── Tailscale Serve
   └→ web_server.js(:8050)   静态页 + /api/offer 反代 + /api/save 存库
        └→ orchestrator_webrtc.py(:7860)  SmallWebRTCTransport runner
             └→ Pipecat 管线：
-                手机麦克风 → VAD(判停) → SenseVoiceSTT(本地中文, 整段转写)
+                手机麦克风 → VAD(判停·收紧抗噪) → SenseVoiceSTT(本地中文, 整段转写; 非语音/呼吸/叹词过滤)
                 → EvidenceInjector(要"原话/证据"时，本地检索 L3 逐字稿→注入)
                 → Hermes 大脑(8642) —— 系统指令 = counselor_context.build()
                    (每场会话开始预注入: 人设 + 热层[过滤测试态] + 最近林老师会谈回顾)
@@ -92,6 +92,7 @@ https://mac.tail844e3d.ts.net/ ── Tailscale Serve
 - **分层证据（L1→L3）**：L1 纪要摘要 → L2 咨询整理层 → L3 原始逐字稿。要「原话/证据」时，语音侧 `EvidenceInjector` 本地检索 L3 逐字稿（带日期+说话人+时间戳）按需注入；文字轨道 `recall` skill 亦可按需下钻 L3。
 - **长会话稳定**：上下文自动摘要（>12k token 或攒够 40 条即压缩较早对话）防 LLM 随会话增长变慢；TTS 空音频自动重试防丢句「半段」。
 - **逐字记录可追溯**：落盘每条带 `[HH:MM:SS]` 时间线（**北京时间** UTC+8，不依赖 Mac 本机时区）。
+- **语音输入抗噪**：VAD 收紧（低音量/过短不触发）+ STT 输出侧过滤（丢非语音事件标签、重复叹词，如「嗯嗯/呃呃」；丢短噪声；保留「嗯/对/好」等真实短应答）——治呼吸/语气词被误转乱码。
 - **会话生命周期**：每场结束复刻指纹归档对应 Hermes 会话（置 `ended_at`），不留未关会话。
 - **数据卫生**：`status:测试` 的占位不被当真实背景；原始音频仅内存处理，不落盘不入日志；真实咨询内容只存本地 vault。
 - **延迟**：本地 ASR(SenseVoice) + 同 WiFi；TTS 流式首帧 / 轻 persona（详见 `VoiceTherapy_响应延迟优化.md`）。
@@ -108,7 +109,7 @@ https://mac.tail844e3d.ts.net/ ── Tailscale Serve
 - **Phase 3.1/3.2 已验收**：本机实时语音环 + barge-in（打断 ~5ms）
 - **Phase 3.3 手机语音已打通**：手机浏览器 WebRTC ↔ Mac Mini runner ↔ Hermes，对话 + 打断可用
 - **随时能聊**：Mac Mini launchd 自启 runner + tailscale serve（URL 固定，免重扫）
-- **识别**：本地 **SenseVoice**（sherpa-onnx，中文专用，带标点；比 whisper 更快更准）
+- **识别**：本地 **SenseVoice**（sherpa-onnx，中文专用，带标点；比 whisper 更快更准）；**非语音治理**——VAD 收紧挡呼吸/杂音，输出侧丢弃非语音事件与纯叹词（保留「嗯/对/好」等真实短应答）
 - **咨询大脑**：开场预注入 `counselor_context`（人设 + 热层 + 最近林老师会谈回顾；过滤测试态占位；护栏：不因沉默退出、不擅自删改档案）
 - **定制 PWA 客户端**：咨询师主题界面、计时器、实时转写+历史、暂停/退出、结束自动存 `AI-访谈` 到 vault
 - **分层证据检索**：要「原话/具体说了什么」时能下钻到 `raw/咨询纪要/` 的 **L3 原始逐字稿**（带 日期+说话人+时间戳+飞书妙记链接）；语音侧 `EvidenceInjector` 按需注入，文字轨道 `recall` skill 同步支持
@@ -133,7 +134,7 @@ VoiceTherapy/
 └── voice_orchestrator/              # 【B层 语音编排】本仓库软件本体
     ├── orchestrator.py              #   本机实时语音环(pipeline 入口)
     ├── orchestrator_webrtc.py       #   手机 WebRTC runner(bot) 入口
-    ├── sensevoice_stt.py            #   本地中文 STT(sherpa-onnx SenseVoice，当前默认)
+    ├── sensevoice_stt.py            #   本地中文 STT(sherpa-onnx SenseVoice) + 非语音/叹词过滤
     ├── faster_whisper_stt.py        #   备选 STT(faster-whisper，中文弱，默认已换 SenseVoice)
     ├── edge_tts_service.py          #   中文 TTS(edge→ffmpeg→PCM；流式首帧)
     ├── counselor_context.py         #   咨询开场上下文组装器(预注入人设+热层+林老师回顾)
