@@ -123,14 +123,14 @@ def build_pipeline(transport: LocalAudioTransport, llm: OpenAILLMService) -> Pip
     tts = EdgeTTSService()
 
     # LLM 上下文 + 用户/助手聚合器；VAD 挂在用户聚合器上（Silero 判停触发 STT）
-    # 灵敏度放宽：min_volume 降低、stop_secs 拉长，便于首次调试触发
+    # 收紧灵敏度：挡掉呼吸/杂音误触发（低置信度、低音量、过短都不算"开始说话"）
     context = LLMContext()
     vad = SileroVADAnalyzer(
         params=VADParams(
-            confidence=0.5,
-            start_secs=0.2,
-            stop_secs=0.5,
-            min_volume=0.3,
+            confidence=0.6,      # 提高判定置信度，杂音不易触发
+            start_secs=0.35,     # 需 ~350ms 连续语音才开一回合（短呼吸不触发）
+            stop_secs=0.6,
+            min_volume=0.5,      # 提高音量门限，挡低声呼吸
         )
     )
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(

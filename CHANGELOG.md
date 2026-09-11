@@ -2,6 +2,13 @@
 
 > VoiceTherapy 迭代优化小结（倒序，最新在上）。
 
+## v1.9.5（2026-09-11）非语音/呼吸误识别治理
+
+- **症状**：咨询中呼吸、语气叹词被 SenseVoice 误转成乱字符/凭空汉字，混进对话。
+- **① VAD 收紧**（`orchestrator.py` + `orchestrator_webrtc.py`）：`confidence 0.5→0.6`、`start_secs 0.2→0.35`（需 ~350ms 连续语音才开一回合）、`min_volume 0.3→0.5`（挡低声呼吸）——从源头减少对呼吸/杂音的触发。
+- **② SenseVoice 输出过滤**（`sensevoice_stt._clean_transcript`）：剥掉 SenseVoice 标签；命中 `nospeech/Laughter/BGM/Cough…` 等**非语音事件标签**即整段丢弃；**纯叹词/语气词**（嗯/呃/啊…，去标点后仅剩填充字）丢弃；正常短回复（好/对/嗯对）与正文保留。
+- 变更：`sensevoice_stt.py` / `orchestrator.py` / `orchestrator_webrtc.py`。
+
 ## v1.9.4（2026-09-11）会话卫生：VoiceTherapy 会话不再堆积在 `/sessions`
 
 - **背景**：Hermes 的 `/sessions` 默认只隐藏 `subagent/tool`，`api_server`（VoiceTherapy）会话只要未归档就会出现在列表里，长期堆积。

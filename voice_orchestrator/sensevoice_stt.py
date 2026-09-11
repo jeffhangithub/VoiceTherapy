@@ -10,6 +10,7 @@ ITN(逆文本正则，数字/时间归一)。本服务在 VAD 停后把整段音
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from pathlib import Path
 
@@ -27,6 +28,33 @@ from pipecat.services.stt_service import SegmentedSTTService
 # 模型目录：默认 asr_models 下最新的 sherpa-onnx-sense-voice-*
 _MODELS_DIR = Path(__file__).parent / "asr_models"
 _MODEL_GLOB = "sherpa-onnx-sense-voice-*"
+
+# —— 非语音/填充词过滤（呼吸、笑声、语气叹词常被误转成乱字符）——
+# 1) SenseVoice 的事件/非语音标签：命中即判定整段非语音，丢弃
+_NONSPEECH_TAG = re.compile(
+    r"<\|(nospeech|speech|Laughter|Applause|BGM|Cough|Sneeze|Cry|Event|Emotion|Noise|Silence)\|>",
+    re.I,
+)
+# 2) 任意 SenseVoice 标签（如 <|zh|> <|itn|> <|Emotion|>）先剥掉
+_ANY_TAG = re.compile(r"<\|[^|]*\|>")
+# 3) 纯叹词/语气词（去掉标点空白后仅剩这些 → 视为呼吸/语气词，丢弃）
+_FILLER_CHARS = set("嗯唔呣呃哦噢喔唉哎哎额诶欸诶呀嘛唷喏哈嘿嘻呵噷嘸啊")
+_PUNCT = re.compile(r"[\s，。、！？；：,.!?;:~～…·\-—'\"“”‘’()（）]+")
+
+
+def _clean_transcript(text: str) -> str:
+    """清理 SenseVoice 输出：剥标签、丢弃非语音事件与纯叹气/呼吸段落。返回 '' 表示丢弃。"""
+    if not text:
+        return ""
+    if _NONSPEECH_TAG.search(text):     # 笑声/咳嗽/BGM/nospeech 等 → 整段非语音
+        return ""
+    t = _ANY_TAG.sub("", text).strip()   # 剥掉语言/ITN 等标签
+    core = _PUNCT.sub("", t)
+    if not core:
+        return ""
+    if all(ch in _FILLER_CHARS for ch in core):  # 纯"嗯/呃/啊…"→ 呼吸或语气词
+        return ""
+    return t
 
 
 class SenseVoiceSTTService(SegmentedSTTService):
@@ -91,9 +119,13 @@ class SenseVoiceSTTService(SegmentedSTTService):
             return
         logger.info(f"[SenseVoice] run_stt 收到 {len(audio)} 字节音频")
         loop = asyncio.get_running_loop()
-        text = await loop.run_in_executor(None, self._transcribe_sync, audio)
-        if text:
-            yield TranscriptionFrame(text=text, user_id="", timestamp=str(time.time()))
+        raw = await loop.run_in_executor(None, self._transcribe_sync, audio)
+        text = _clean_transcript(raw)
+        if not text:
+            if raw:
+                logger.info(f"[SenseVoice] 过滤非语音/叹词/噪声, 丢弃: {raw!r}")
+            return
+        yield TranscriptionFrame(text=text, user_id="", timestamp=str(time.time()))
 
 
 def _find_latest_model_dir() -> Path:
