@@ -26,6 +26,22 @@ SYS = VAULT / "咨询" / "_系统"
 RECAP_FILE = MY / "开场回顾.md"
 HUMAN_DIR = VAULT / "raw" / "咨询纪要"
 
+# 语音轨骨架：单一真源 = counselor skill 的「## 语音轨骨架」节（语音轨不加载 skill，故预注入）。
+# 读不到该节（skill 缺失/被改）时回退到内置兜底，保证语音轨永不裸奔。
+_SKILL_MD = Path.home() / ".hermes" / "skills" / "counselor" / "SKILL.md"
+_SKELETON_FALLBACK = (
+    "【本场结构】按此推进，但不必机械报阶段，顺着他走：\n"
+    "- S0 开场：简短问候→（有回顾就先回顾林老师最近一场）→带钩子；别替他总结\"成长/成果\"。\n"
+    "- S1 签到：一句问他今天什么状态，让他自由铺陈；别急着上框架。\n"
+    "- S2 聚焦+定目标：把议题收成一个焦点，并【共同确定】「今天这段时间，怎样的帮助对你最有用」——别替他猜。\n"
+    "- S3 探索：一次一个焦点、只问一个开放问题；先共情与澄清，再上框架。\n"
+    "- S4 工作：轻推一步；【上框架前先分三层】——事实/他的解释/你的假设；只轻推他的解释，不把假设当结论。\n"
+    "- S5 收束：让他用自己的话总结；结束前问一句此刻感受，留一个可继续的小方向，不封死出路。\n"
+    "【安全·情境化】当他描述持续、反复、可能升级的伤害（对他或孩子）时，自然先关切一句安全"
+    "（如「最近一次具体发生了什么」）；别像念清单；安全未清前不深挖动机。\n"
+    "【始终】沉默/停顿是他思考的时间，绝不因此结束；不诊断、不贴标签、不替第三方定动机；引用必带日期。"
+)
+
 _PERSONA = (
     "你是 Jeff 的心理咨询助理（林老师——他的真人咨询师——的助理与延伸），本场是正式咨询会话。"
     "定位：辅助回顾、反映、澄清、轻结构 sparring 的陪伴者，不是治疗师、不是林老师的替代。"
@@ -115,9 +131,24 @@ def _extract_summary(md_text: str, max_chars: int = 700) -> str:
     return body[:max_chars]
 
 
+def _read_voice_skeleton() -> str:
+    """读取 counselor skill 的「## 语音轨骨架」节；失败回退内置兜底。语音轨不加载 skill，故预注入。"""
+    try:
+        txt = _SKILL_MD.read_text(encoding="utf-8")
+        m = re.search(r"##\s*语音轨骨架[^\n]*\n(.*?)(?:\n##\s|\Z)", txt, re.S)
+        if m:
+            # 去掉引用块(>)注释行，只留正文
+            sec = "\n".join(l for l in m.group(1).splitlines() if not l.lstrip().startswith(">")).strip()
+            if len(sec) > 60:
+                return "【本场结构 · 来自 counselor skill】\n" + sec
+    except Exception:
+        pass
+    return _SKELETON_FALLBACK
+
+
 def build() -> str:
     """组装完整的 system 指令（含预注入热层 + 可选开场回顾），并更新 last_recapped。"""
-    parts = [_PERSONA]
+    parts = [_PERSONA, _read_voice_skeleton()]
 
     # —— 热层（每次预注入，供大脑全程参考；status:测试/验证 的占位不注入为真实背景）——
     hot = []
