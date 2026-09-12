@@ -130,6 +130,7 @@ VoiceTherapy/
 ├── VoiceTherapy_2.0_开发计划.md     # 2.0 原生 App 路线
 ├── VoiceTherapy_响应延迟优化.md     # 响应延迟分析与 P1-P4 路径
 ├── VoiceTherapy_公开化改造计划.md   # 个人版(Tailscale)→公开版(云信令+SFU/TURN)架构演进
+├── VoiceTherapy_咨询师调优分析.md   # 督导闭环 + 语音轨结构预注入（含 LLM 谄媚/prompt 上限、flash vs pro 实测）
 ├── hermes-skills/                   # 【C层 Hermes】咨询 skill（counselor + counselor/counseling-notes-jeff + session-notes + recall + weekly-insights + supervision）
 ├── templates/vault-structure/       # 【D层 vault】Obsidian 目录空模板
 └── voice_orchestrator/              # 【B层 语音编排】本仓库软件本体
