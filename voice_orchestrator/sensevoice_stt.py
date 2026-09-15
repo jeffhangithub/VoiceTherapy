@@ -41,16 +41,22 @@ _ANY_TAG = re.compile(r"<\|[^|]*\|>")
 _ANSWER_OK = set("嗯对好是行要中")                 # 单字可能是真实应答 → 保留
 _DEAD_FILLER = set("呃唔欸唉喂咦哦噢啊呀哇哈嘿嘻哎呕唷喏嘛嗳诶呣噷嘸")  # 非应答语气词 → 丢
 _PUNCT = re.compile(r"[\s，。、！？；：,.!?;:~～…·\-—'\"“”‘’()（）]+")
-_LATIN_RUN = re.compile(r"[A-Za-z]{3,}")            # 拉丁碎词(如 contacttact)→ 噪声/误识别
+_LATIN_RUN = re.compile(r"[A-Za-z]{3,}")            # 拉丁碎词(如 contacttact)
+_CJK = re.compile(r"[\u4e00-\u9fff]")               # 任一汉字
 
 
 def _looks_like_noise(text: str, dur_s: float) -> bool:
-    """过短音频却出乱码/多字 → 判为噪声毛刺（B）。"""
-    if _LATIN_RUN.search(text):                    # 含 ≥3 连续拉丁字母，几乎必是误识别
-        return True
-    if dur_s < 0.7 and len(_PUNCT.sub("", text)) >= 3:   # <0.7s 却转出 3+ 字 → 毛刺
-        return True
-    return False
+    """仅在【完全不含中文】时才判噪声。
+
+    修正：旧版把"含 ≥3 连续拉丁字母"或"<0.7s 却出多字"当噪声，
+    会**误删含 ADHD/AI/PPT 等缩写的真实发言**（2026-09-14 曾整句丢弃
+    "对，因为我刚才说我自己是ADHD。"）。现规则：只要含任一汉字 → 真实发言，绝不丢；
+    只有完全无中文的碎片（"Yeah."/"It why."/"contacttact"）才判噪声。dur_s 保留入参、不再用。
+    """
+    if _CJK.search(text):          # 含任何汉字 → 真实发言
+        return False
+    core = _PUNCT.sub("", text)
+    return bool(core)              # 完全无中文且非空 → 噪声碎片
 
 
 def _clean_transcript(text: str, dur_s: float = 99.0) -> str:

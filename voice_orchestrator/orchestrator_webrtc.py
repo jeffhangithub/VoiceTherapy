@@ -60,7 +60,7 @@ async def run_bot(transport: BaseTransport, _runner_args: RunnerArguments):
 
     context = LLMContext()
     vad = SileroVADAnalyzer(
-        params=VADParams(confidence=0.6, start_secs=0.35, stop_secs=0.6, min_volume=0.5)  # 收紧: 挡呼吸/杂音误触发
+        params=VADParams(confidence=0.55, start_secs=0.25, stop_secs=0.5, min_volume=0.4)  # 放宽: 降噪交给文本过滤器, 免截断真实语音
     )
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
         context,

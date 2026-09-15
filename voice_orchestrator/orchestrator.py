@@ -127,10 +127,10 @@ def build_pipeline(transport: LocalAudioTransport, llm: OpenAILLMService) -> Pip
     context = LLMContext()
     vad = SileroVADAnalyzer(
         params=VADParams(
-            confidence=0.6,      # 提高判定置信度，杂音不易触发
-            start_secs=0.35,     # 需 ~350ms 连续语音才开一回合（短呼吸不触发）
-            stop_secs=0.6,
-            min_volume=0.5,      # 提高音量门限，挡低声呼吸
+            confidence=0.55,     # 放宽：降噪改由文本过滤器负责，VAD 不轻易挡真实语音
+            start_secs=0.25,     # 放宽：短句(对/嗯对)不再被"需 350ms"漏掉
+            stop_secs=0.5,
+            min_volume=0.4,      # 放宽：避免低声/轻声被截断（此前 0.5 丢话严重）
         )
     )
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
